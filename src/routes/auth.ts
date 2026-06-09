@@ -50,8 +50,29 @@ router.post(
       );
 
       const user = result.rows[0];
+
+      const countResult = await pool.query('SELECT COUNT(*) FROM users');
+      const userCount = parseInt(countResult.rows[0].count as string, 10);
+      if (userCount <= 1000) {
+        await pool.query(
+          'INSERT INTO user_badges (user_id, badge_type) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [user.id, 'early_supporter']
+        );
+      }
+      if (userCount === 1) {
+        await pool.query(
+          'INSERT INTO user_badges (user_id, badge_type) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [user.id, 'staff']
+        );
+      }
+
+      const badges = await pool.query(
+        'SELECT badge_type FROM user_badges WHERE user_id = $1 ORDER BY awarded_at',
+        [user.id]
+      );
+
       const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
-      res.status(201).json({ token, user });
+      res.status(201).json({ token, user: { ...user, badges: badges.rows.map((r: { badge_type: string }) => r.badge_type) } });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Server error' });

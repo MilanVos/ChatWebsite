@@ -1,5 +1,6 @@
 import React from 'react';
 import useStore from '../store/useStore';
+import UserBadges from './UserBadges';
 
 const statusColor = (status: string) => {
   if (status === 'online') return 'bg-discord-green';
@@ -17,6 +18,7 @@ interface MemberItemProps {
     role_name?: string;
     role_color?: string;
     custom_status?: string;
+    badges?: string[];
   };
   status: string;
 }
@@ -33,12 +35,17 @@ const MemberItem: React.FC<MemberItemProps> = ({ member, status }) => (
       )}
       <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-gray ${statusColor(status)}`} />
     </div>
-    <div className="min-w-0">
-      <div
-        className={`text-sm font-medium truncate ${status === 'offline' ? 'text-discord-text-muted' : 'text-discord-text'}`}
-        style={member.role_color && member.role_color !== '#000000' ? { color: member.role_color } : undefined}
-      >
-        {member.nickname || member.username}
+    <div className="min-w-0 flex-1">
+      <div className="flex items-center gap-1">
+        <div
+          className={`text-sm font-medium truncate ${status === 'offline' ? 'text-discord-text-muted' : 'text-discord-text'}`}
+          style={member.role_color && member.role_color !== '#000000' ? { color: member.role_color } : undefined}
+        >
+          {member.nickname || member.username}
+        </div>
+        {member.badges && member.badges.length > 0 && (
+          <UserBadges badges={member.badges} size="sm" />
+        )}
       </div>
       {member.custom_status && status !== 'offline' && (
         <div className="text-discord-text-muted text-xs truncate">{member.custom_status}</div>

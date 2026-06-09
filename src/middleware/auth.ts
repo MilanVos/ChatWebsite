@@ -16,7 +16,12 @@ export const auth = async (req: Request, res: Response, next: NextFunction): Pro
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
     const result = await pool.query(
-      'SELECT id, username, discriminator, email, avatar, banner, bio, status, custom_status FROM users WHERE id = $1',
+      `SELECT u.id, u.username, u.discriminator, u.email, u.avatar, u.banner, u.bio, u.status, u.custom_status,
+        COALESCE(json_agg(ub.badge_type ORDER BY ub.awarded_at) FILTER (WHERE ub.badge_type IS NOT NULL), '[]') AS badges
+       FROM users u
+       LEFT JOIN user_badges ub ON ub.user_id = u.id
+       WHERE u.id = $1
+       GROUP BY u.id`,
       [decoded.userId]
     );
 

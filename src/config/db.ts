@@ -162,6 +162,16 @@ export const initDB = async (): Promise<void> => {
       CREATE INDEX IF NOT EXISTS idx_channels_server_id ON channels(server_id);
       CREATE INDEX IF NOT EXISTS idx_dm_messages_channel_id ON dm_messages(dm_channel_id, created_at);
       CREATE INDEX IF NOT EXISTS idx_friends_users ON friends(requester_id, addressee_id);
+
+      CREATE TABLE IF NOT EXISTS user_badges (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        badge_type VARCHAR(50) NOT NULL,
+        awarded_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, badge_type)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_user_badges_user_id ON user_badges(user_id);
     `);
     console.log('✅ Database initialized');
   } catch (err) {

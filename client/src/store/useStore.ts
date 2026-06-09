@@ -3,6 +3,7 @@ import { create } from 'zustand';
 interface User {
   id: string; username: string; discriminator: string; email: string;
   avatar?: string; banner?: string; bio?: string; status: string; custom_status?: string;
+  badges?: string[];
 }
 interface Server {
   id: string; name: string; icon?: string; owner_id: string; invite_code: string;
@@ -14,7 +15,7 @@ interface Channel {
   type: string; topic?: string; position: number;
 }
 interface Role { id: string; server_id: string; name: string; color: string; permissions: number; position: number; }
-interface Member extends User { nickname?: string; role_id?: string; role_name?: string; role_color?: string; joined_at: string; }
+interface Member extends User { nickname?: string; role_id?: string; role_name?: string; role_color?: string; joined_at: string; badges?: string[]; }
 interface Message {
   id: string; channel_id: string; user_id: string; content?: string;
   username?: string; avatar?: string; discriminator?: string;
@@ -72,6 +73,7 @@ interface Store {
   addDM: (dm: DMChannel) => void;
   setTyping: (channelId: string, userId: string, username: string, isTyping: boolean) => void;
   updateMemberStatus: (userId: string, status: string) => void;
+  setBadges: (badges: string[]) => void;
   logout: () => void;
 }
 
@@ -135,6 +137,7 @@ const useStore = create<Store>((set) => ({
     const { [userId]: _, ...rest } = current;
     return { typingUsers: { ...s.typingUsers, [channelId]: rest } };
   }),
+  setBadges: (badges) => set((s) => ({ user: s.user ? { ...s.user, badges } : s.user })),
   updateMemberStatus: (userId, status) => set((s) => ({
     memberStatuses: { ...s.memberStatuses, [userId]: status },
     activeServer: s.activeServer

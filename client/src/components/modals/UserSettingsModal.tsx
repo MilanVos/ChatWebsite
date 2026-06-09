@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import api from '../../utils/api';
 import useStore from '../../store/useStore';
 import toast from 'react-hot-toast';
+import UserBadges, { HYPESQUAD_BADGES_LIST, BADGE_DEFS } from '../UserBadges';
 
 interface Props {
   onClose: () => void;
 }
 
-type Tab = 'profile' | 'account';
+type Tab = 'profile' | 'account' | 'badges';
 
 const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
-  const { user, setUser, logout } = useStore();
+  const { user, setUser, setBadges, logout } = useStore();
   const [tab, setTab] = useState<Tab>('profile');
 
   const [username, setUsername] = useState(user?.username || '');
@@ -26,6 +27,9 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+
+  const currentHypeSquad = user?.badges?.find(b => HYPESQUAD_BADGES_LIST.includes(b as typeof HYPESQUAD_BADGES_LIST[number])) || null;
+  const [savingHypeSquad, setSavingHypeSquad] = useState(false);
 
   if (!user) return null;
 
@@ -80,6 +84,19 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
     }
   };
 
+  const handleHypeSquad = async (house: string) => {
+    setSavingHypeSquad(true);
+    try {
+      const res = await api.patch('/users/me/hypesquad', { house });
+      setBadges(res.data.badges);
+      toast.success('HypeSquad updated!');
+    } catch {
+      toast.error('Failed to update HypeSquad');
+    } finally {
+      setSavingHypeSquad(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     logout();
@@ -100,7 +117,7 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
           <div className="text-discord-text-muted text-xs font-bold uppercase tracking-wide px-2 mb-2">
             User Settings
           </div>
-          {(['profile', 'account'] as Tab[]).map(t => (
+          {(['profile', 'badges', 'account'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -152,6 +169,9 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
                     </div>
                   </label>
                   <div className="text-white font-bold mt-2">{user.username}<span className="text-discord-text-muted font-normal">#{user.discriminator}</span></div>
+                  {user.badges && user.badges.length > 0 && (
+                    <UserBadges badges={user.badges} size="md" className="mt-1" />
+                  )}
                 </div>
               </div>
 
@@ -229,6 +249,63 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
                 >
                   {savingProfile ? 'Saving...' : 'Save Changes'}
                 </button>
+              </div>
+            </div>
+          )}
+
+          {tab === 'badges' && (
+            <div>
+              <h2 className="text-white text-xl font-bold mb-2">Your Badges</h2>
+              <p className="text-discord-text-muted text-sm mb-6">Badges are displayed on your profile and next to your name.</p>
+
+              {user.badges && user.badges.length > 0 ? (
+                <div className="bg-discord-dark rounded-lg p-4 mb-6">
+                  <div className="text-discord-text-muted text-xs font-bold uppercase tracking-wide mb-3">Earned Badges</div>
+                  <div className="flex flex-wrap gap-4">
+                    {user.badges.map(badge => {
+                      const def = BADGE_DEFS[badge as keyof typeof BADGE_DEFS];
+                      if (!def) return null;
+                      return (
+                        <div key={badge} className="flex items-center gap-2">
+                          <div className="w-8 h-8" style={{ color: def.color }}>{def.icon}</div>
+                          <span className="text-discord-text text-sm">{def.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-discord-dark rounded-lg p-4 mb-6 text-discord-text-muted text-sm">
+                  No badges yet. Keep using the app to earn them!
+                </div>
+              )}
+
+              <div className="bg-discord-dark rounded-lg p-4">
+                <div className="text-white font-bold mb-1">HypeSquad</div>
+                <p className="text-discord-text-muted text-sm mb-4">Choose your HypeSquad house. You can change it at any time.</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {HYPESQUAD_BADGES_LIST.map(house => {
+                    const def = BADGE_DEFS[house as keyof typeof BADGE_DEFS];
+                    const isSelected = currentHypeSquad === house;
+                    return (
+                      <button
+                        key={house}
+                        onClick={() => handleHypeSquad(house)}
+                        disabled={savingHypeSquad || isSelected}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all
+                          ${isSelected
+                            ? 'border-opacity-100 bg-opacity-20'
+                            : 'border-discord-lighter bg-discord-darker hover:border-opacity-80'
+                          }`}
+                        style={isSelected ? { borderColor: def.color, backgroundColor: `${def.color}22` } : {}}
+                      >
+                        <div className="w-10 h-10" style={{ color: def.color }}>{def.icon}</div>
+                        <span className="text-discord-text text-xs font-medium text-center">{def.label.replace('HypeSquad ', '')}</span>
+                        {isSelected && <span className="text-xs font-bold" style={{ color: def.color }}>Selected</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
