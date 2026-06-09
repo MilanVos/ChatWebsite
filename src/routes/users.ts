@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { pool } from '../config/db';
 import { auth } from '../middleware/auth';
 import { upload } from '../middleware/upload';
+import { uploadFile } from '../config/cloudinary';
 
 const router = Router();
 
@@ -60,8 +61,8 @@ router.patch(
       if (bio !== undefined) updates.bio = bio;
       if (custom_status !== undefined) updates.custom_status = custom_status;
       if (status) updates.status = status;
-      if (files?.avatar?.[0]) updates.avatar = `/uploads/${files.avatar[0].filename}`;
-      if (files?.banner?.[0]) updates.banner = `/uploads/${files.banner[0].filename}`;
+      if (files?.avatar?.[0]) updates.avatar = await uploadFile(files.avatar[0], 'avatars');
+      if (files?.banner?.[0]) updates.banner = await uploadFile(files.banner[0], 'banners');
 
       if (!Object.keys(updates).length) { res.json(req.user); return; }
 

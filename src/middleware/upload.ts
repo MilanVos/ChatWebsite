@@ -1,17 +1,5 @@
 import multer, { FileFilterCallback } from 'multer';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { Request } from 'express';
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads'));
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${uuidv4()}${ext}`);
-  },
-});
 
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
   const allowed = [
@@ -26,7 +14,7 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: FileFilterCall
 };
 
 export const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: { fileSize: 25 * 1024 * 1024 },
 });

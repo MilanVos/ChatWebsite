@@ -3,6 +3,7 @@ import { pool } from '../config/db';
 import { auth } from '../middleware/auth';
 import { upload } from '../middleware/upload';
 import { getIO } from '../socket/handlers';
+import { uploadFile } from '../config/cloudinary';
 
 const router = Router();
 
@@ -101,9 +102,10 @@ router.post('/', auth, upload.array('attachments', 10), async (req: Request, res
 
     if (files?.length) {
       for (const file of files) {
+        const url = await uploadFile(file, 'attachments');
         await pool.query(
           'INSERT INTO message_attachments (message_id, url, filename, size, content_type) VALUES ($1, $2, $3, $4, $5)',
-          [msg.id, `/uploads/${file.filename}`, file.originalname, file.size, file.mimetype]
+          [msg.id, url, file.originalname, file.size, file.mimetype]
         );
       }
     }

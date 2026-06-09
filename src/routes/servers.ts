@@ -3,6 +3,7 @@ import { pool } from '../config/db';
 import { auth } from '../middleware/auth';
 import { upload } from '../middleware/upload';
 import { getIO } from '../socket/handlers';
+import { uploadFile } from '../config/cloudinary';
 
 const router = Router();
 const generateInvite = (): string => Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -69,7 +70,7 @@ router.post('/', auth, upload.single('icon'), async (req: Request, res: Response
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const icon = req.file ? `/uploads/${req.file.filename}` : null;
+    const icon = req.file ? await uploadFile(req.file, 'server-icons') : null;
     const server = (await client.query(
       'INSERT INTO servers (name, icon, owner_id, invite_code) VALUES ($1, $2, $3, $4) RETURNING *',
       [name, icon, req.user!.id, generateInvite()]
@@ -144,8 +145,8 @@ router.patch('/:id', auth, upload.fields([{ name: 'icon', maxCount: 1 }, { name:
     const updates: Record<string, string> = {};
     if (name) updates.name = name;
     if (description !== undefined) updates.description = description;
-    if (files?.icon?.[0]) updates.icon = `/uploads/${files.icon[0].filename}`;
-    if (files?.banner?.[0]) updates.banner = `/uploads/${files.banner[0].filename}`;
+    if (files?.icon?.[0]) updates.icon = await uploadFile(files.icon[0], 'server-icons');
+    if (files?.banner?.[0]) updates.banner = await uploadFile(files.banner[0], 'server-banners');
 
     if (!Object.keys(updates).length) { res.json(server); return; }
 
