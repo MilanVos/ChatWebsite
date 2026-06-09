@@ -141,4 +141,45 @@ router.post('/me/badges/award', auth, async (req: Request, res: Response): Promi
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
+router.delete('/badges/revoke', auth, async (req: Request, res: Response): Promise<void> => {
+  const { target_user_id, badge_type } = req.body as { target_user_id: string; badge_type: string };
+
+  const selfBadges = (req.user as { badges?: string[] }).badges || [];
+  if (!selfBadges.includes('staff')) {
+    res.status(403).json({ error: 'Only staff can revoke badges' }); return;
+  }
+  if (badge_type === 'staff' && target_user_id === req.user!.id) {
+    res.status(400).json({ error: 'Cannot revoke your own staff badge' }); return;
+  }
+  try {
+    await pool.query(
+      'DELETE FROM user_badges WHERE user_id = $1 AND badge_type = $2',
+      [target_user_id, badge_type]
+    );
+    res.json({ message: 'Badge revoked' });
+  } catch { res.status(500).json({ error: 'Server error' }); }
+});
+
+router.get('/admin/users', auth, async (req: Request, res: Response): Promise<void> => {
+  const selfBadges = (req.user as { badges?: string[] }).badges || [];
+  if (!selfBadges.includes('staff')) {
+    res.status(403).json({ error: 'Only staff can access this' }); return;
+  }
+  const { q } = req.query as { q?: string };
+  try {
+    const result = await pool.query(
+      `SELECT u.id, u.username, u.discriminator, u.avatar, u.email, u.created_at,
+        COALESCE(json_agg(ub.badge_type ORDER BY ub.awarded_at) FILTER (WHERE ub.badge_type IS NOT NULL), '[]') AS badges
+       FROM users u
+       LEFT JOIN user_badges ub ON ub.user_id = u.id
+       WHERE ($1::text IS NULL OR u.username ILIKE $1)
+       GROUP BY u.id
+       ORDER BY u.created_at DESC
+       LIMIT 20`,
+      [q ? `%${q}%` : null]
+    );
+    res.json(result.rows);
+  } catch { res.status(500).json({ error: 'Server error' }); }
+});
+
 export default router;

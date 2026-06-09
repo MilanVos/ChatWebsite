@@ -8,7 +8,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'profile' | 'account' | 'badges';
+type Tab = 'profile' | 'account' | 'badges' | 'admin';
 
 const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
   const { user, setUser, setBadges, logout } = useStore();
@@ -30,6 +30,11 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
 
   const currentHypeSquad = user?.badges?.find(b => HYPESQUAD_BADGES_LIST.includes(b as typeof HYPESQUAD_BADGES_LIST[number])) || null;
   const [savingHypeSquad, setSavingHypeSquad] = useState(false);
+
+  const isStaff = user?.badges?.includes('staff') ?? false;
+  const [adminSearch, setAdminSearch] = useState('');
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
+  const [adminLoading, setAdminLoading] = useState(false);
 
   if (!user) return null;
 
@@ -84,6 +89,37 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
     }
   };
 
+  const fetchAdminUsers = async (q?: string) => {
+    setAdminLoading(true);
+    try {
+      const res = await api.get('/users/admin/users', { params: q ? { q } : {} });
+      setAdminUsers(res.data);
+    } catch { toast.error('Failed to load users'); }
+    finally { setAdminLoading(false); }
+  };
+
+  const handleAwardBadge = async (targetUserId: string, badgeType: string) => {
+    try {
+      await api.post('/users/me/badges/award', { target_user_id: targetUserId, badge_type: badgeType });
+      setAdminUsers(prev => prev.map(u => u.id === targetUserId
+        ? { ...u, badges: [...(u.badges || []), badgeType] }
+        : u
+      ));
+      toast.success('Badge awarded!');
+    } catch (err: any) { toast.error(err.response?.data?.error || 'Failed to award badge'); }
+  };
+
+  const handleRevokeBadge = async (targetUserId: string, badgeType: string) => {
+    try {
+      await api.delete('/users/badges/revoke', { data: { target_user_id: targetUserId, badge_type: badgeType } });
+      setAdminUsers(prev => prev.map(u => u.id === targetUserId
+        ? { ...u, badges: (u.badges || []).filter((b: string) => b !== badgeType) }
+        : u
+      ));
+      toast.success('Badge revoked!');
+    } catch (err: any) { toast.error(err.response?.data?.error || 'Failed to revoke badge'); }
+  };
+
   const handleHypeSquad = async (house: string) => {
     setSavingHypeSquad(true);
     try {
@@ -117,10 +153,10 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
           <div className="text-discord-text-muted text-xs font-bold uppercase tracking-wide px-2 mb-2">
             User Settings
           </div>
-          {(['profile', 'badges', 'account'] as Tab[]).map(t => (
+          {([...(['profile', 'badges', 'account'] as Tab[]), ...(isStaff ? ['admin' as Tab] : [])]).map(t => (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => { setTab(t); if (t === 'admin' && adminUsers.length === 0) fetchAdminUsers(); }}
               className={`text-left px-2 py-1.5 rounded text-sm mb-0.5 capitalize transition-colors
                 ${tab === t ? 'bg-discord-lighter text-white' : 'text-discord-text-muted hover:bg-discord-lighter/50 hover:text-discord-text'}`}
             >
@@ -374,6 +410,84 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
                     {savingPassword ? 'Changing...' : 'Change Password'}
                   </button>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {tab === 'admin' && isStaff && (
+            <div>
+              <h2 className="text-white text-xl font-bold mb-2">Admin Panel</h2>
+              <p className="text-discord-text-muted text-sm mb-6">Manage users and their badges.</p>
+
+              <div className="flex gap-2 mb-4">
+                <input
+                  value={adminSearch}
+                  onChange={e => setAdminSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && fetchAdminUsers(adminSearch)}
+                  placeholder="Search by username..."
+                  className="flex-1 bg-discord-dark text-discord-text rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-discord-accent"
+                />
+                <button
+                  onClick={() => fetchAdminUsers(adminSearch)}
+                  disabled={adminLoading}
+                  className="bg-discord-accent hover:bg-discord-accent-hover text-white px-4 py-2 rounded text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  {adminLoading ? '...' : 'Search'}
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {adminUsers.map(u => (
+                  <div key={u.id} className="bg-discord-dark rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      {u.avatar ? (
+                        <img src={u.avatar} alt={u.username} className="w-9 h-9 rounded-full" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-discord-accent flex items-center justify-center text-white font-bold text-sm">
+                          {u.username[0].toUpperCase()}
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-white font-medium text-sm">{u.username}<span className="text-discord-text-muted font-normal">#{u.discriminator}</span></div>
+                        <div className="text-discord-text-muted text-xs">{u.email}</div>
+                      </div>
+                      {u.badges?.length > 0 && (
+                        <div className="ml-auto">
+                          <UserBadges badges={u.badges} size="sm" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-discord-lighter pt-3">
+                      <div className="text-discord-text-muted text-xs font-bold uppercase tracking-wide mb-2">Badges</div>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(BADGE_DEFS).map(([badgeKey, def]) => {
+                          const hasIt = (u.badges || []).includes(badgeKey);
+                          return (
+                            <button
+                              key={badgeKey}
+                              onClick={() => hasIt ? handleRevokeBadge(u.id, badgeKey) : handleAwardBadge(u.id, badgeKey)}
+                              title={hasIt ? `Remove ${def.label}` : `Award ${def.label}`}
+                              className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-colors border
+                                ${hasIt
+                                  ? 'border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                                  : 'border-discord-lighter bg-discord-lighter/30 text-discord-text-muted hover:bg-discord-lighter/60 hover:text-discord-text'
+                                }`}
+                            >
+                              <span style={{ color: def.color }} className="w-3 h-3 inline-flex">{def.icon}</span>
+                              {hasIt ? '✕' : '+'} {def.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {adminUsers.length === 0 && !adminLoading && (
+                  <div className="text-discord-text-muted text-sm text-center py-8">
+                    Search for a user to manage their badges.
+                  </div>
+                )}
               </div>
             </div>
           )}
