@@ -1,6 +1,8 @@
 node_modules/
 dist/
+client/node_modules/
+client/dist/
 .env
-*.log
 uploads/*
 !uploads/.gitkeep
+*.log
