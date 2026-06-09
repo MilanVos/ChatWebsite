@@ -7,6 +7,11 @@ import { getIO } from '../socket/handlers';
 const router = Router();
 const generateInvite = (): string => Math.random().toString(36).substring(2, 10).toUpperCase();
 
+const isStaff = (user: Express.Request['user']): boolean => {
+  const badges = (user as { badges?: string[] })?.badges ?? [];
+  return badges.includes('staff');
+};
+
 router.get('/', auth, async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await pool.query(`
@@ -21,8 +26,10 @@ router.get('/', auth, async (req: Request, res: Response): Promise<void> => {
 router.get('/:id', auth, async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   try {
-    const memberCheck = await pool.query('SELECT * FROM server_members WHERE server_id = $1 AND user_id = $2', [id, req.user!.id]);
-    if (!memberCheck.rows[0]) { res.status(403).json({ error: 'Not a member' }); return; }
+    if (!isStaff(req.user)) {
+      const memberCheck = await pool.query('SELECT * FROM server_members WHERE server_id = $1 AND user_id = $2', [id, req.user!.id]);
+      if (!memberCheck.rows[0]) { res.status(403).json({ error: 'Not a member' }); return; }
+    }
 
     const [server, categories, channels, members, roles] = await Promise.all([
       pool.query('SELECT * FROM servers WHERE id = $1', [id]),
@@ -30,10 +37,15 @@ router.get('/:id', auth, async (req: Request, res: Response): Promise<void> => {
       pool.query('SELECT * FROM channels WHERE server_id = $1 ORDER BY position ASC', [id]),
       pool.query(`
         SELECT u.id, u.username, u.discriminator, u.avatar, u.status, u.custom_status,
-               sm.nickname, sm.role_id, sm.joined_at, r.name as role_name, r.color as role_color
-        FROM server_members sm JOIN users u ON sm.user_id = u.id
+               sm.nickname, sm.role_id, sm.joined_at, r.name as role_name, r.color as role_color,
+               COALESCE(json_agg(ub.badge_type ORDER BY ub.awarded_at) FILTER (WHERE ub.badge_type IS NOT NULL), '[]') AS badges
+        FROM server_members sm
+        JOIN users u ON sm.user_id = u.id
         LEFT JOIN roles r ON sm.role_id = r.id
-        WHERE sm.server_id = $1 ORDER BY u.username ASC
+        LEFT JOIN user_badges ub ON ub.user_id = u.id
+        WHERE sm.server_id = $1
+        GROUP BY u.id, sm.nickname, sm.role_id, sm.joined_at, r.name, r.color
+        ORDER BY u.username ASC
       `, [id]),
       pool.query('SELECT * FROM roles WHERE server_id = $1 ORDER BY position DESC', [id]),
     ]);
@@ -68,6 +80,11 @@ router.post('/', auth, upload.single('icon'), async (req: Request, res: Response
       [server.id, '@everyone', '#99aab5', 104324161, 0]
     )).rows[0];
 
+    await client.query(
+      'INSERT INTO roles (server_id, name, color, permissions, position) VALUES ($1, $2, $3, $4, $5)',
+      [server.id, 'Admin', '#f04747', 2147483647, 100]
+    );
+
     await client.query('INSERT INTO server_members (server_id, user_id, role_id) VALUES ($1, $2, $3)', [server.id, req.user!.id, role.id]);
 
     const category = (await client.query(
@@ -100,8 +117,16 @@ router.post('/join/:inviteCode', auth, async (req: Request, res: Response): Prom
     const banned = await pool.query('SELECT * FROM bans WHERE server_id = $1 AND user_id = $2', [server.id, req.user!.id]);
     if (banned.rows[0]) { res.status(403).json({ error: 'You are banned from this server' }); return; }
 
-    const role = (await pool.query('SELECT id FROM roles WHERE server_id = $1 AND name = $2', [server.id, '@everyone'])).rows[0];
-    await pool.query('INSERT INTO server_members (server_id, user_id, role_id) VALUES ($1, $2, $3)', [server.id, req.user!.id, role?.id]);
+    let roleId: string | null = null;
+    if (isStaff(req.user)) {
+      const adminRole = (await pool.query('SELECT id FROM roles WHERE server_id = $1 AND name = $2', [server.id, 'Admin'])).rows[0];
+      roleId = adminRole?.id ?? null;
+    } else {
+      const everyoneRole = (await pool.query('SELECT id FROM roles WHERE server_id = $1 AND name = $2', [server.id, '@everyone'])).rows[0];
+      roleId = everyoneRole?.id ?? null;
+    }
+
+    await pool.query('INSERT INTO server_members (server_id, user_id, role_id) VALUES ($1, $2, $3)', [server.id, req.user!.id, roleId]);
     await pool.query('UPDATE servers SET member_count = member_count + 1 WHERE id = $1', [server.id]);
     res.json(server);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
@@ -114,7 +139,7 @@ router.patch('/:id', auth, upload.fields([{ name: 'icon', maxCount: 1 }, { name:
   try {
     const server = (await pool.query('SELECT * FROM servers WHERE id = $1', [id])).rows[0];
     if (!server) { res.status(404).json({ error: 'Not found' }); return; }
-    if (server.owner_id !== req.user!.id) { res.status(403).json({ error: 'No permission' }); return; }
+    if (server.owner_id !== req.user!.id && !isStaff(req.user)) { res.status(403).json({ error: 'No permission' }); return; }
 
     const updates: Record<string, string> = {};
     if (name) updates.name = name;
@@ -148,7 +173,7 @@ router.delete('/:id', auth, async (req: Request, res: Response): Promise<void> =
   try {
     const server = (await pool.query('SELECT owner_id FROM servers WHERE id = $1', [id])).rows[0];
     if (!server) { res.status(404).json({ error: 'Not found' }); return; }
-    if (server.owner_id !== req.user!.id) { res.status(403).json({ error: 'No permission' }); return; }
+    if (server.owner_id !== req.user!.id && !isStaff(req.user)) { res.status(403).json({ error: 'No permission' }); return; }
 
     await pool.query('DELETE FROM servers WHERE id = $1', [id]);
     res.json({ message: 'Server deleted' });
@@ -159,7 +184,7 @@ router.delete('/:id/members/:userId', auth, async (req: Request, res: Response):
   const { id, userId } = req.params;
   try {
     const server = (await pool.query('SELECT owner_id FROM servers WHERE id = $1', [id])).rows[0];
-    if (!server || server.owner_id !== req.user!.id) { res.status(403).json({ error: 'No permission' }); return; }
+    if (!server || (server.owner_id !== req.user!.id && !isStaff(req.user))) { res.status(403).json({ error: 'No permission' }); return; }
 
     await pool.query('DELETE FROM server_members WHERE server_id = $1 AND user_id = $2', [id, userId]);
     await pool.query('UPDATE servers SET member_count = GREATEST(member_count - 1, 0) WHERE id = $1', [id]);
@@ -173,7 +198,7 @@ router.post('/:id/ban/:userId', auth, async (req: Request, res: Response): Promi
   const { reason } = req.body as { reason?: string };
   try {
     const server = (await pool.query('SELECT owner_id FROM servers WHERE id = $1', [id])).rows[0];
-    if (!server || server.owner_id !== req.user!.id) { res.status(403).json({ error: 'No permission' }); return; }
+    if (!server || (server.owner_id !== req.user!.id && !isStaff(req.user))) { res.status(403).json({ error: 'No permission' }); return; }
 
     await pool.query('INSERT INTO bans (server_id, user_id, banned_by, reason) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [id, userId, req.user!.id, reason]);
     await pool.query('DELETE FROM server_members WHERE server_id = $1 AND user_id = $2', [id, userId]);
@@ -187,7 +212,7 @@ router.post('/:id/invite/regenerate', auth, async (req: Request, res: Response):
   const { id } = req.params;
   try {
     const server = (await pool.query('SELECT owner_id FROM servers WHERE id = $1', [id])).rows[0];
-    if (!server || server.owner_id !== req.user!.id) { res.status(403).json({ error: 'No permission' }); return; }
+    if (!server || (server.owner_id !== req.user!.id && !isStaff(req.user))) { res.status(403).json({ error: 'No permission' }); return; }
 
     const newCode = generateInvite();
     await pool.query('UPDATE servers SET invite_code = $1 WHERE id = $2', [newCode, id]);
@@ -200,7 +225,7 @@ router.post('/:id/roles', auth, async (req: Request, res: Response): Promise<voi
   const { name, color, permissions } = req.body as { name?: string; color?: string; permissions?: number };
   try {
     const server = (await pool.query('SELECT owner_id FROM servers WHERE id = $1', [id])).rows[0];
-    if (!server || server.owner_id !== req.user!.id) { res.status(403).json({ error: 'No permission' }); return; }
+    if (!server || (server.owner_id !== req.user!.id && !isStaff(req.user))) { res.status(403).json({ error: 'No permission' }); return; }
 
     const pos = (await pool.query('SELECT COALESCE(MAX(position), 0) + 1 as pos FROM roles WHERE server_id = $1', [id])).rows[0].pos as number;
     const role = (await pool.query(
@@ -216,7 +241,7 @@ router.patch('/:id/members/:userId/role', auth, async (req: Request, res: Respon
   const { role_id } = req.body as { role_id: string };
   try {
     const server = (await pool.query('SELECT owner_id FROM servers WHERE id = $1', [id])).rows[0];
-    if (!server || server.owner_id !== req.user!.id) { res.status(403).json({ error: 'No permission' }); return; }
+    if (!server || (server.owner_id !== req.user!.id && !isStaff(req.user))) { res.status(403).json({ error: 'No permission' }); return; }
 
     await pool.query('UPDATE server_members SET role_id = $1 WHERE server_id = $2 AND user_id = $3', [role_id, id, userId]);
     res.json({ message: 'Role updated' });
