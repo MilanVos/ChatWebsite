@@ -13,6 +13,15 @@ import messageRoutes from './routes/messages';
 import friendRoutes from './routes/friends';
 import dmRoutes from './routes/dms';
 
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is not set');
+  process.exit(1);
+}
+if (!process.env.DATABASE_URL) {
+  console.error('FATAL: DATABASE_URL environment variable is not set');
+  process.exit(1);
+}
+
 const app = express();
 const httpServer = http.createServer(app);
 
@@ -49,8 +58,8 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 initDB()
   .then(() => {
     httpServer.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📦 Mode: ${process.env.NODE_ENV ?? 'development'}`);
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Mode: ${process.env.NODE_ENV ?? 'development'}`);
     });
   })
   .catch((err: Error) => {
