@@ -22,7 +22,7 @@ const Register = () => {
       setUser(res.data.user);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed');
+      setError(err.response?.data?.error || err.response?.data?.errors?.[0]?.msg || 'Registration failed');
     } finally {
       setLoading(false);
     }

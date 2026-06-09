@@ -21,7 +21,7 @@ const Login = () => {
       setUser(res.data.user);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.error || err.response?.data?.errors?.[0]?.msg || 'Login failed');
     } finally {
       setLoading(false);
     }
