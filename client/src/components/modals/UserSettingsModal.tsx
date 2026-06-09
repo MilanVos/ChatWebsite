@@ -49,7 +49,7 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
       formData.append('custom_status', customStatus.trim());
       formData.append('status', status);
       if (avatar) formData.append('avatar', avatar);
-      const res = await api.patch('/auth/profile', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await api.patch('/users/me', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setUser(res.data);
       toast.success('Profile updated!');
     } catch (e) {
@@ -72,13 +72,13 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
     }
     setSavingPassword(true);
     try {
-      await api.patch('/auth/password', { current_password: currentPassword, new_password: newPassword });
+      await api.patch('/users/me/password', { currentPassword, newPassword });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
       toast.success('Password changed!');
     } catch (err: any) {
-      setPasswordError(err.response?.data?.message || 'Failed to change password');
+      setPasswordError(err.response?.data?.error || 'Failed to change password');
     } finally {
       setSavingPassword(false);
     }
