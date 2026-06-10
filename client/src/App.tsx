@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MainApp from './pages/MainApp';
+import ContextMenu from './components/ContextMenu';
 import useStore from './store/useStore';
 import api from './utils/api';
 
@@ -25,6 +26,7 @@ const App = () => {
   return (
     <BrowserRouter>
       <Toaster position="bottom-right" toastOptions={{ style: { background: '#18191c', color: '#dcddde', border: '1px solid #40444b' } }} />
+      <ContextMenu />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
