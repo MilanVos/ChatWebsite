@@ -1,25 +1,144 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
-  background-color: #202225;
-  color: #dcddde;
-  font-family: 'Whitney', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  overflow: hidden;
+html {
+  height: 100%;
 }
 
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #202225; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #1a1b1e; }
+body {
+  min-height: 100%;
+  color: #f0e2de;
+  font-family: 'Inter', 'system-ui', sans-serif;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 900px 700px at 8% 45%, rgba(255, 60, 20, 0.22) 0%, transparent 65%),
+    radial-gradient(ellipse 700px 900px at 92% 12%, rgba(255, 130, 20, 0.18) 0%, transparent 65%),
+    radial-gradient(ellipse 600px 600px at 60% 95%, rgba(220, 20, 55, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 500px 400px at 50% 50%, rgba(180, 10, 30, 0.08) 0%, transparent 70%),
+    #070302;
+  background-attachment: fixed;
+}
 
-.server-icon { transition: border-radius 0.15s ease, background-color 0.15s ease; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 107, 53, 0.25); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 107, 53, 0.45); }
+
+.nexus-glass {
+  background: rgba(10, 4, 3, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-right: 1px solid rgba(255, 107, 53, 0.12);
+}
+
+.nexus-glass-panel {
+  background: rgba(14, 7, 6, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 107, 53, 0.1);
+}
+
+.nexus-glass-input {
+  background: rgba(0, 0, 0, 0.35) !important;
+  border: 1px solid rgba(255, 107, 53, 0.18) !important;
+  color: #f0e2de !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.nexus-glass-input:focus {
+  outline: none !important;
+  border-color: rgba(255, 107, 53, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.12) !important;
+}
+.nexus-glass-input::placeholder { color: rgba(130, 96, 96, 0.7); }
+
+.nexus-gradient-btn {
+  background: linear-gradient(135deg, #ff6b35 0%, #ff2d55 100%);
+  border: none;
+  color: white;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: opacity 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.35);
+}
+.nexus-gradient-btn:hover { opacity: 0.92; box-shadow: 0 6px 28px rgba(255, 107, 53, 0.5); }
+.nexus-gradient-btn:active { transform: scale(0.98); }
+.nexus-gradient-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.nexus-gradient-text {
+  background: linear-gradient(135deg, #ff8c42, #ff2d55);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.nexus-active-channel {
+  background: linear-gradient(90deg, rgba(255, 107, 53, 0.22) 0%, rgba(255, 45, 85, 0.12) 100%) !important;
+  border-left: 2px solid #ff6b35;
+}
+
+.nexus-active-channel span { color: #f0e2de !important; }
+
+.nexus-server-icon-active {
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, #ff6b35, #ff2d55) !important;
+}
+
+.nexus-server-active-bar {
+  background: linear-gradient(180deg, #ff6b35, #ff2d55) !important;
+  border-radius: 0 3px 3px 0;
+}
+
+.nexus-user-bar {
+  background: rgba(5, 2, 2, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 107, 53, 0.1);
+}
+
+.nexus-category-header {
+  color: rgba(255, 107, 53, 0.7) !important;
+  letter-spacing: 0.08em;
+  font-size: 0.65rem;
+}
+.nexus-category-header:hover { color: rgba(255, 107, 53, 0.95) !important; }
+
+.nexus-message-hover:hover {
+  background: rgba(255, 107, 53, 0.04);
+}
+
+.nexus-tag {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(255, 45, 85, 0.2));
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  color: #ff8c42;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .message-enter { animation: fadeIn 0.15s ease; }
+
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.97); }
+}
+
+.nexus-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.6;
+  animation: orb-float 12s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}

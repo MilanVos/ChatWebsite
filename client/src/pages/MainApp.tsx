@@ -22,7 +22,7 @@ const MainApp = () => {
   }, [user]);
 
   return (
-    <div className="flex h-screen bg-discord-light overflow-hidden">
+    <div className="flex h-screen overflow-hidden">
       <ServerSidebar />
       {activeServer ? (
         <>
@@ -35,8 +35,11 @@ const MainApp = () => {
                 <><ChatArea /><MembersList /></>
               )
             ) : (
-              <div className="flex-1 flex items-center justify-center text-discord-text-muted">
-                <div className="text-center"><div className="text-6xl mb-4">👋</div><p>Select a channel</p></div>
+              <div className="flex-1 flex items-center justify-center" style={{ color: 'rgba(240,226,222,0.4)' }}>
+                <div className="text-center">
+                  <div className="text-6xl mb-4 opacity-30">⚡</div>
+                  <p className="font-medium">Select a channel to start chatting</p>
+                </div>
               </div>
             )}
           </div>

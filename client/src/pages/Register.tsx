@@ -29,62 +29,96 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-discord-darker flex items-center justify-center p-4">
-      <div className="bg-discord-gray rounded-lg p-8 w-full max-w-md shadow-xl">
-        <h1 className="text-white text-2xl font-bold text-center mb-2">Create an account</h1>
-        <p className="text-discord-text-muted text-center mb-6 text-sm">Join the conversation today!</p>
-        {error && <div className="bg-red-500/20 text-discord-red rounded p-3 mb-4 text-sm">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-discord-text-muted text-xs font-bold uppercase tracking-wide mb-1.5">
-              Username
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              className="w-full bg-discord-dark text-discord-text rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-discord-accent text-sm"
-              required
-              minLength={2}
-              maxLength={32}
-            />
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      <div className="nexus-orb w-96 h-96 bg-orange-600 -top-24 -right-24" style={{ animationDelay: '2s' }} />
+      <div className="nexus-orb w-80 h-80 bg-red-700 -bottom-16 -left-16" style={{ animationDelay: '6s' }} />
+      <div className="nexus-orb w-72 h-72 bg-orange-500 top-1/3 left-1/4" style={{ animationDelay: '10s' }} />
+
+      <div className="relative z-10 w-full max-w-md">
+        <div className="nexus-glass-panel rounded-2xl p-8 shadow-2xl">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+              style={{ background: 'linear-gradient(135deg, #ff6b35, #ff2d55)', boxShadow: '0 8px 32px rgba(255,107,53,0.4)' }}>
+              <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-1">Create your account</h1>
+            <p className="text-sm" style={{ color: 'rgba(240,226,222,0.55)' }}>Join Nexus and start chatting</p>
           </div>
-          <div>
-            <label className="block text-discord-text-muted text-xs font-bold uppercase tracking-wide mb-1.5">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full bg-discord-dark text-discord-text rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-discord-accent text-sm"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-discord-text-muted text-xs font-bold uppercase tracking-wide mb-1.5">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="w-full bg-discord-dark text-discord-text rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-discord-accent text-sm"
-              required
-              minLength={8}
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-discord-accent hover:bg-discord-accent-hover text-white rounded py-2.5 font-medium transition-colors disabled:opacity-50 mt-2"
-          >
-            {loading ? 'Creating account...' : 'Continue'}
-          </button>
-        </form>
-        <p className="text-discord-text-muted text-sm mt-4">
-          Already have an account?{' '}
-          <Link to="/login" className="text-discord-accent hover:underline">Log In</Link>
+
+          {error && (
+            <div className="rounded-lg px-4 py-3 mb-5 text-sm flex items-center gap-2"
+              style={{ background: 'rgba(255,59,85,0.12)', border: '1px solid rgba(255,59,85,0.3)', color: '#ff6b7a' }}>
+              <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(240,226,222,0.5)' }}>
+                Username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                className="nexus-glass-input w-full rounded-lg px-4 py-2.5 text-sm"
+                placeholder="Choose a username"
+                required
+                minLength={2}
+                maxLength={32}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(240,226,222,0.5)' }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="nexus-glass-input w-full rounded-lg px-4 py-2.5 text-sm"
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'rgba(240,226,222,0.5)' }}>
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="nexus-glass-input w-full rounded-lg px-4 py-2.5 text-sm"
+                placeholder="Create a password (min. 8 chars)"
+                required
+                minLength={8}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="nexus-gradient-btn w-full rounded-xl py-3 text-sm mt-2"
+            >
+              {loading ? 'Creating account...' : 'Create Account'}
+            </button>
+          </form>
+
+          <p className="text-center mt-6 text-sm" style={{ color: 'rgba(240,226,222,0.45)' }}>
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold" style={{ color: '#ff8c42' }}>
+              Sign in
+            </Link>
+          </p>
+        </div>
+
+        <p className="text-center mt-4 text-xs" style={{ color: 'rgba(240,226,222,0.25)' }}>
+          Nexus Chat — Connect without limits
         </p>
       </div>
     </div>

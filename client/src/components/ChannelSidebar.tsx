@@ -32,9 +32,10 @@ const ChannelSidebar = () => {
   const uncategorized = channels.filter(c => !c.category_id).sort((a, b) => a.position - b.position);
 
   return (
-    <div className="w-60 bg-discord-gray flex flex-col flex-shrink-0">
+    <div className="w-60 nexus-glass flex flex-col flex-shrink-0">
       <button
-        className="h-12 flex items-center justify-between px-4 border-b border-discord-darker shadow-md hover:bg-discord-lighter transition-colors w-full text-left"
+        className="h-12 flex items-center justify-between px-4 shadow-sm hover:bg-discord-lighter/30 transition-colors w-full text-left"
+        style={{ borderBottom: '1px solid rgba(255,107,53,0.1)' }}
         onClick={() => setShowServerSettings(true)}
       >
         <span className="text-white font-bold text-sm truncate">{activeServer.name}</span>
@@ -65,7 +66,7 @@ const ChannelSidebar = () => {
               className="flex items-center justify-between px-3 py-1 group cursor-pointer"
               onClick={() => setCollapsed(c => ({ ...c, [cat.id]: !c[cat.id] }))}
             >
-              <span className="text-discord-text-muted text-xs font-bold uppercase tracking-wide hover:text-discord-text-dim flex items-center gap-1">
+              <span className="nexus-category-header font-bold uppercase flex items-center gap-1">
                 <svg className={`w-2 h-2 transition-transform ${collapsed[cat.id] ? '-rotate-90' : ''}`} fill="currentColor" viewBox="0 0 8 8">
                   <path d="M0 2l4 4 4-4z" />
                 </svg>
@@ -111,16 +112,17 @@ const ChannelSidebar = () => {
         )}
       </div>
 
-      <div className="h-14 bg-discord-dark flex items-center px-2 gap-2 flex-shrink-0">
+      <div className="h-14 nexus-user-bar flex items-center px-2 gap-2 flex-shrink-0">
         <div className="relative flex-shrink-0">
           {user?.avatar ? (
             <img src={user.avatar} alt={user.username} className="w-8 h-8 rounded-full" />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-discord-accent flex items-center justify-center text-white text-sm font-bold">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+              style={{ background: 'linear-gradient(135deg, #ff6b35, #ff2d55)' }}>
               {user?.username[0].toUpperCase()}
             </div>
           )}
-          <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-dark ${statusDot(user?.status)}`} />
+          <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-darkest ${statusDot(user?.status)}`} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-white text-sm font-medium truncate">{user?.username}</div>
@@ -156,10 +158,10 @@ interface ChannelItemProps {
 const ChannelItem: React.FC<ChannelItemProps> = ({ channel, isActive, inVoice, onClick }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-2 px-3 py-1.5 mx-2 rounded text-sm transition-colors group
+    className={`w-full flex items-center gap-2 px-3 py-1.5 mx-2 rounded-lg text-sm transition-all duration-150 group
       ${isActive
-        ? 'bg-discord-lighter text-white'
-        : 'text-discord-text-muted hover:bg-discord-lighter/50 hover:text-discord-text-dim'
+        ? 'nexus-active-channel'
+        : 'text-discord-text-muted hover:bg-discord-lighter/20 hover:text-discord-text-dim'
       }`}
     style={{ width: 'calc(100% - 16px)' }}
   >

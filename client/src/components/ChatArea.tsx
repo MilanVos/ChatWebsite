@@ -93,10 +93,11 @@ const ChatArea: React.FC<Props> = ({ isDM = false }) => {
   const channelName = isDM ? activeDM?.username : activeChannel?.name;
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden bg-discord-light">
-      <div className="h-12 flex items-center px-4 border-b border-discord-darker shadow-sm flex-shrink-0 gap-3">
-        <span className="text-discord-text-muted font-bold text-lg">{isDM ? '' : '#'}</span>
-        <span className="text-white font-bold text-sm">{channelName}</span>
+    <div className="flex flex-col flex-1 overflow-hidden" style={{ background: 'rgba(8,4,3,0.55)', backdropFilter: 'blur(8px)' }}>
+      <div className="h-12 flex items-center px-4 shadow-sm flex-shrink-0 gap-3"
+        style={{ borderBottom: '1px solid rgba(255,107,53,0.1)', background: 'rgba(6,3,2,0.6)', backdropFilter: 'blur(16px)' }}>
+        <span className="font-bold text-lg" style={{ color: '#ff6b35' }}>{isDM ? '✉' : '#'}</span>
+        <span className="text-white font-semibold text-sm">{channelName}</span>
         {!isDM && activeChannel?.topic && (
           <>
             <div className="w-px h-5 bg-discord-lighter" />

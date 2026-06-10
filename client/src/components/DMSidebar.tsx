@@ -22,13 +22,13 @@ const DMSidebar = () => {
   );
 
   return (
-    <div className="w-60 bg-discord-gray flex flex-col flex-shrink-0">
-      <div className="px-3 py-2 border-b border-discord-darker shadow-sm">
+    <div className="w-60 nexus-glass flex flex-col flex-shrink-0">
+      <div className="px-3 py-2" style={{ borderBottom: '1px solid rgba(255,107,53,0.1)' }}>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Find or start a conversation"
-          className="w-full bg-discord-darker text-discord-text text-sm rounded px-3 py-1.5 focus:outline-none placeholder-discord-text-muted"
+          placeholder="Search conversations..."
+          className="nexus-glass-input w-full text-sm rounded-lg px-3 py-1.5"
         />
       </div>
 
@@ -36,8 +36,8 @@ const DMSidebar = () => {
         <div className="px-2">
           <button
             onClick={() => { setActiveDM(null); setActiveServer(null); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors mb-1
-              ${!activeDM ? 'bg-discord-lighter text-white' : 'text-discord-text-muted hover:bg-discord-lighter/50 hover:text-discord-text'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 mb-1
+              ${!activeDM ? 'nexus-active-channel' : 'text-discord-text-muted hover:bg-discord-lighter/20 hover:text-discord-text'}`}
           >
             <svg className="w-6 h-6 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
               <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
@@ -47,7 +47,7 @@ const DMSidebar = () => {
         </div>
 
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <span className="text-discord-text-muted text-xs font-bold uppercase tracking-wide">
+          <span className="nexus-category-header font-bold uppercase">
             Direct Messages
           </span>
           <button
@@ -71,8 +71,8 @@ const DMSidebar = () => {
             <div key={dm.id} className="px-2">
               <button
                 onClick={handleOpen}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors group
-                  ${activeDM?.id === dm.id ? 'bg-discord-lighter text-white' : unread > 0 ? 'text-white hover:bg-discord-lighter/50' : 'text-discord-text-muted hover:bg-discord-lighter/50 hover:text-discord-text'}`}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-150 group
+                  ${activeDM?.id === dm.id ? 'nexus-active-channel' : unread > 0 ? 'text-white hover:bg-discord-lighter/20' : 'text-discord-text-muted hover:bg-discord-lighter/20 hover:text-discord-text'}`}
               >
                 <div
                   className="relative flex-shrink-0"
@@ -111,16 +111,17 @@ const DMSidebar = () => {
         })}
       </div>
 
-      <div className="h-14 bg-discord-dark flex items-center px-2 gap-2 flex-shrink-0">
+      <div className="h-14 nexus-user-bar flex items-center px-2 gap-2 flex-shrink-0">
         <div className="relative flex-shrink-0">
           {user?.avatar ? (
             <img src={user.avatar} alt={user.username} className="w-8 h-8 rounded-full" />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-discord-accent flex items-center justify-center text-white text-sm font-bold">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+              style={{ background: 'linear-gradient(135deg, #ff6b35, #ff2d55)' }}>
               {user?.username[0].toUpperCase()}
             </div>
           )}
-          <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-dark ${statusColor(user?.status)}`} />
+          <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-darkest ${statusColor(user?.status)}`} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-white text-sm font-medium truncate">{user?.username}</div>

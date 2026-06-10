@@ -65,7 +65,7 @@ const MemberItem: React.FC<MemberItemProps> = ({ member, status, roles, isOwner,
   };
 
   return (
-    <div className="relative flex items-center gap-3 px-3 py-1.5 rounded mx-2 hover:bg-discord-lighter cursor-pointer group">
+    <div className="relative flex items-center gap-3 px-3 py-1.5 rounded-lg mx-2 hover:bg-discord-lighter/20 cursor-pointer group transition-colors nexus-message-hover">
       <div className="flex items-center gap-3 flex-1 min-w-0" onClick={() => onOpenProfile(member.id)}>
         <div className="relative flex-shrink-0">
           {member.avatar ? (
@@ -108,8 +108,8 @@ const MemberItem: React.FC<MemberItemProps> = ({ member, status, roles, isOwner,
           </button>
 
           {showRoleMenu && (
-            <div className="absolute right-0 top-7 bg-discord-dark border border-discord-darker rounded-lg shadow-2xl py-1.5 z-50 min-w-[160px]">
-              <div className="px-3 py-1 text-discord-text-muted text-xs font-bold uppercase tracking-wide mb-1">
+            <div className="absolute right-0 top-7 rounded-xl shadow-2xl py-1.5 z-50 min-w-[160px] nexus-glass-panel">
+              <div className="px-3 py-1 nexus-category-header font-bold uppercase mb-1">
                 Assign Role
               </div>
               {roles.filter(r => r.name !== '@everyone').map(role => (
@@ -194,10 +194,10 @@ const MembersList = () => {
 
   return (
     <>
-      <div className="w-60 bg-discord-gray flex-shrink-0 overflow-y-auto py-4">
+      <div className="w-60 nexus-glass flex-shrink-0 overflow-y-auto py-4">
         {Object.entries(roleGroups).map(([roleName, roleMembers]) => (
           <div key={roleName} className="mb-2">
-            <div className="px-4 py-1 text-discord-text-muted text-xs font-bold uppercase tracking-wide">
+            <div className="px-4 py-1 nexus-category-header font-bold uppercase">
               {roleName} — {roleMembers.length}
             </div>
             {roleMembers.map(m => (
@@ -208,7 +208,7 @@ const MembersList = () => {
 
         {noRole.length > 0 && (
           <div className="mb-2">
-            <div className="px-4 py-1 text-discord-text-muted text-xs font-bold uppercase tracking-wide">
+            <div className="px-4 py-1 nexus-category-header font-bold uppercase">
               Online — {noRole.length}
             </div>
             {noRole.map(m => (
@@ -219,7 +219,7 @@ const MembersList = () => {
 
         {offline.length > 0 && (
           <div>
-            <div className="px-4 py-1 text-discord-text-muted text-xs font-bold uppercase tracking-wide">
+            <div className="px-4 py-1 nexus-category-header font-bold uppercase">
               Offline — {offline.length}
             </div>
             {offline.map(m => (

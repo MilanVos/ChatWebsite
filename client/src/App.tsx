@@ -25,7 +25,7 @@ const App = () => {
 
   return (
     <BrowserRouter>
-      <Toaster position="bottom-right" toastOptions={{ style: { background: '#18191c', color: '#dcddde', border: '1px solid #40444b' } }} />
+      <Toaster position="bottom-right" toastOptions={{ style: { background: 'rgba(22,13,12,0.95)', color: '#f0e2de', border: '1px solid rgba(255,107,53,0.3)', backdropFilter: 'blur(20px)', fontFamily: 'Inter, system-ui, sans-serif' } }} />
       <ContextMenu />
       <Routes>
         <Route path="/login" element={<Login />} />
