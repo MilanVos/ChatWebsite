@@ -172,6 +172,8 @@ export const initDB = async (): Promise<void> => {
       );
 
       CREATE INDEX IF NOT EXISTS idx_user_badges_user_id ON user_badges(user_id);
+
+      ALTER TABLE dm_members ADD COLUMN IF NOT EXISTS last_read_at TIMESTAMPTZ DEFAULT NOW();
     `);
     console.log('✅ Database initialized');
   } catch (err) {

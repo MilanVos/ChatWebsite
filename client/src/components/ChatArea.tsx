@@ -10,7 +10,7 @@ interface Props {
 }
 
 const ChatArea: React.FC<Props> = ({ isDM = false }) => {
-  const { activeChannel, activeDM, messages, dmMessages, setMessages, setDMMessages, prependMessages, user } = useStore();
+  const { activeChannel, activeDM, messages, dmMessages, setMessages, setDMMessages, prependMessages, user, markDMRead } = useStore();
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [replyTo, setReplyTo] = useState<any>(null);
@@ -49,6 +49,10 @@ const ChatArea: React.FC<Props> = ({ isDM = false }) => {
     setHasMore(true);
     setReplyTo(null);
     fetchMessages();
+    if (isDM) {
+      markDMRead(channelId);
+      api.post(`/dms/${channelId}/read`).catch(() => {});
+    }
     const socket = getSocket();
     if (socket && !isDM) socket.emit('channel:join', channelId);
     return () => {

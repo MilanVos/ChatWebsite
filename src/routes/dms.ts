@@ -11,7 +11,13 @@ router.get('/', auth, async (req: Request, res: Response): Promise<void> => {
       SELECT dc.id, dc.created_at,
         u.id as friend_id, u.username, u.discriminator, u.avatar, u.status, u.custom_status,
         (SELECT content FROM dm_messages WHERE dm_channel_id = dc.id ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT created_at FROM dm_messages WHERE dm_channel_id = dc.id ORDER BY created_at DESC LIMIT 1) as last_message_at
+        (SELECT created_at FROM dm_messages WHERE dm_channel_id = dc.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
+        (
+          SELECT COUNT(*) FROM dm_messages m2
+          WHERE m2.dm_channel_id = dc.id
+            AND m2.user_id != $1
+            AND m2.created_at > COALESCE(dm1.last_read_at, '1970-01-01')
+        ) as unread_count
       FROM dm_channels dc
       JOIN dm_members dm1 ON dc.id = dm1.dm_channel_id AND dm1.user_id = $1
       JOIN dm_members dm2 ON dc.id = dm2.dm_channel_id AND dm2.user_id != $1
@@ -61,6 +67,11 @@ router.post('/:channelId/messages', auth, async (req: Request, res: Response): P
       [channelId, req.user!.id, content.trim()]
     )).rows[0];
 
+    await pool.query(
+      'UPDATE dm_members SET last_read_at = NOW() WHERE dm_channel_id = $1 AND user_id = $2',
+      [channelId, req.user!.id]
+    );
+
     const fullMsg = (await pool.query(
       'SELECT m.*, u.username, u.avatar, u.discriminator FROM dm_messages m JOIN users u ON m.user_id = u.id WHERE m.id = $1',
       [msg.id]
@@ -73,6 +84,17 @@ router.post('/:channelId/messages', auth, async (req: Request, res: Response): P
 
     res.status(201).json(fullMsg);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+router.post('/:channelId/read', auth, async (req: Request, res: Response): Promise<void> => {
+  const { channelId } = req.params;
+  try {
+    await pool.query(
+      'UPDATE dm_members SET last_read_at = NOW() WHERE dm_channel_id = $1 AND user_id = $2',
+      [channelId, req.user!.id]
+    );
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
 router.delete('/:channelId/messages/:messageId', auth, async (req: Request, res: Response): Promise<void> => {

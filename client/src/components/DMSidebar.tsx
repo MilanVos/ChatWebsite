@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../store/useStore';
 import UserSettingsModal from './modals/UserSettingsModal';
+import api from '../utils/api';
 
 const statusColor = (status?: string) => {
   if (status === 'online') return 'bg-discord-green';
@@ -10,7 +11,7 @@ const statusColor = (status?: string) => {
 };
 
 const DMSidebar = () => {
-  const { dms, activeDM, setActiveDM, setActiveServer, user } = useStore();
+  const { dms, activeDM, setActiveDM, setActiveServer, user, markDMRead } = useStore();
   const [search, setSearch] = useState('');
   const [showUserSettings, setShowUserSettings] = useState(false);
 
@@ -55,39 +56,54 @@ const DMSidebar = () => {
           </button>
         </div>
 
-        {filtered.map(dm => (
-          <div key={dm.id} className="px-2">
-            <button
-              onClick={() => setActiveDM(dm)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors group
-                ${activeDM?.id === dm.id ? 'bg-discord-lighter text-white' : 'text-discord-text-muted hover:bg-discord-lighter/50 hover:text-discord-text'}`}
-            >
-              <div className="relative flex-shrink-0">
-                {dm.avatar ? (
-                  <img src={dm.avatar} alt={dm.username} className="w-8 h-8 rounded-full" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-discord-accent flex items-center justify-center text-white text-xs font-bold">
-                    {(dm.username || '?')[0].toUpperCase()}
+        {filtered.map(dm => {
+          const unread = Number(dm.unread_count || 0);
+          const handleOpen = () => {
+            setActiveDM(dm);
+            if (unread > 0) {
+              markDMRead(dm.id);
+              api.post(`/dms/${dm.id}/read`).catch(() => {});
+            }
+          };
+          return (
+            <div key={dm.id} className="px-2">
+              <button
+                onClick={handleOpen}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors group
+                  ${activeDM?.id === dm.id ? 'bg-discord-lighter text-white' : unread > 0 ? 'text-white hover:bg-discord-lighter/50' : 'text-discord-text-muted hover:bg-discord-lighter/50 hover:text-discord-text'}`}
+              >
+                <div className="relative flex-shrink-0">
+                  {dm.avatar ? (
+                    <img src={dm.avatar} alt={dm.username} className="w-8 h-8 rounded-full" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-discord-accent flex items-center justify-center text-white text-xs font-bold">
+                      {(dm.username || '?')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-gray ${statusColor(dm.status)}`} />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className={`truncate ${unread > 0 ? 'font-bold' : 'font-medium'}`}>{dm.username}</div>
+                  {dm.last_message && (
+                    <div className={`text-xs truncate ${unread > 0 ? 'text-discord-text font-medium' : 'text-discord-text-muted'}`}>{dm.last_message}</div>
+                  )}
+                </div>
+                {unread > 0 && (
+                  <div className="flex-shrink-0 min-w-[18px] h-[18px] bg-discord-red rounded-full flex items-center justify-center text-white text-xs font-bold px-1">
+                    {unread > 99 ? '99+' : unread}
                   </div>
                 )}
-                <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-discord-gray ${statusColor(dm.status)}`} />
-              </div>
-              <div className="flex-1 min-w-0 text-left">
-                <div className="font-medium truncate">{dm.username}</div>
-                {dm.last_message && (
-                  <div className="text-xs text-discord-text-muted truncate">{dm.last_message}</div>
-                )}
-              </div>
-              <button
-                onClick={e => { e.stopPropagation(); }}
-                className="opacity-0 group-hover:opacity-100 text-discord-text-muted hover:text-white transition-opacity text-xs"
-                title="Close DM"
-              >
-                ✕
+                <button
+                  onClick={e => { e.stopPropagation(); }}
+                  className="opacity-0 group-hover:opacity-100 text-discord-text-muted hover:text-white transition-opacity text-xs"
+                  title="Close DM"
+                >
+                  ✕
+                </button>
               </button>
-            </button>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
       <div className="h-14 bg-discord-dark flex items-center px-2 gap-2 flex-shrink-0">

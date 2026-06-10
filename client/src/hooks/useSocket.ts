@@ -8,7 +8,7 @@ export const getSocket = (): Socket | null => socketInstance;
 
 export const useSocket = () => {
   const initialized = useRef(false);
-  const { user, addMessage, updateMessage, deleteMessage, updateMessageReactions, addDMMessage, deleteDMMessage, setTyping, updateMemberStatus, addFriend, updateFriend, removeServer } = useStore();
+  const { user, addMessage, updateMessage, deleteMessage, updateMessageReactions, addDMMessage, deleteDMMessage, setTyping, updateMemberStatus, addFriend, updateFriend, removeServer, incrementDMUnread } = useStore();
 
   useEffect(() => {
     if (!user || initialized.current) return;
@@ -20,7 +20,13 @@ export const useSocket = () => {
     socketInstance.on('message:update', (msg: any) => updateMessage(msg.channel_id, msg));
     socketInstance.on('message:delete', ({ id, channel_id }: any) => deleteMessage(channel_id, id));
     socketInstance.on('message:reaction', ({ message_id, reactions, channel_id }: any) => updateMessageReactions(channel_id, message_id, reactions));
-    socketInstance.on('dm:message', (msg: any) => addDMMessage(msg.dm_channel_id, msg));
+    socketInstance.on('dm:message', (msg: any) => {
+      const { activeDM } = useStore.getState();
+      addDMMessage(msg.dm_channel_id, msg);
+      if (activeDM?.id !== msg.dm_channel_id) {
+        incrementDMUnread(msg.dm_channel_id, msg.content || '');
+      }
+    });
     socketInstance.on('dm:delete', ({ message_id, dm_channel_id }: any) => deleteDMMessage(dm_channel_id, message_id));
     socketInstance.on('typing:start', ({ channel_id, user: u }: any) => {
       setTyping(channel_id, u.id, u.username, true);

@@ -27,7 +27,7 @@ interface Attachment { id: string; url: string; filename: string; size: number; 
 interface Reaction { emoji: string; count: string; reacted: boolean; }
 interface DMChannel {
   id: string; friend_id?: string; username?: string; avatar?: string;
-  status?: string; last_message?: string; created_at: string;
+  status?: string; last_message?: string; created_at: string; unread_count?: number;
 }
 interface Friend {
   id: string; requester_id: string; addressee_id: string; status: string;
@@ -71,6 +71,8 @@ interface Store {
   updateFriend: (id: string, data: Partial<Friend>) => void;
   setDMs: (dms: DMChannel[]) => void;
   addDM: (dm: DMChannel) => void;
+  markDMRead: (channelId: string) => void;
+  incrementDMUnread: (channelId: string, lastMessage: string) => void;
   setTyping: (channelId: string, userId: string, username: string, isTyping: boolean) => void;
   updateMemberStatus: (userId: string, status: string) => void;
   setBadges: (badges: string[]) => void;
@@ -131,6 +133,19 @@ const useStore = create<Store>((set) => ({
   updateFriend: (id, data) => set((s) => ({ friends: s.friends.map((f) => f.id === id ? { ...f, ...data } : f) })),
   setDMs: (dms) => set({ dms }),
   addDM: (dm) => set((s) => ({ dms: s.dms.find((d) => d.id === dm.id) ? s.dms : [dm, ...s.dms] })),
+  markDMRead: (channelId) => set((s) => ({
+    dms: s.dms.map((d) => d.id === channelId ? { ...d, unread_count: 0 } : d),
+  })),
+  incrementDMUnread: (channelId, lastMessage) => set((s) => ({
+    dms: s.dms.map((d) => d.id === channelId
+      ? { ...d, last_message: lastMessage, unread_count: (d.unread_count || 0) + 1 }
+      : d
+    ).sort((a, b) => {
+      if (a.id === channelId) return -1;
+      if (b.id === channelId) return 1;
+      return 0;
+    }),
+  })),
   setTyping: (channelId, userId, username, isTyping) => set((s) => {
     const current = s.typingUsers[channelId] || {};
     if (isTyping) return { typingUsers: { ...s.typingUsers, [channelId]: { ...current, [userId]: username } } };
