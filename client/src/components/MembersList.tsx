@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import useStore from '../store/useStore';
 import UserBadges from './UserBadges';
+import UserProfileModal from './modals/UserProfileModal';
 
 const statusColor = (status: string) => {
   if (status === 'online') return 'bg-discord-green';
@@ -21,10 +22,14 @@ interface MemberItemProps {
     badges?: string[];
   };
   status: string;
+  onOpenProfile: (id: string) => void;
 }
 
-const MemberItem: React.FC<MemberItemProps> = ({ member, status }) => (
-  <div className="flex items-center gap-3 px-3 py-1.5 rounded mx-2 hover:bg-discord-lighter cursor-pointer">
+const MemberItem: React.FC<MemberItemProps> = ({ member, status, onOpenProfile }) => (
+  <div
+    className="flex items-center gap-3 px-3 py-1.5 rounded mx-2 hover:bg-discord-lighter cursor-pointer"
+    onClick={() => onOpenProfile(member.id)}
+  >
     <div className="relative flex-shrink-0">
       {member.avatar ? (
         <img src={member.avatar} alt={member.username} className="w-8 h-8 rounded-full" />
@@ -56,6 +61,7 @@ const MemberItem: React.FC<MemberItemProps> = ({ member, status }) => (
 
 const MembersList = () => {
   const { activeServer, memberStatuses } = useStore();
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const members = activeServer?.members || [];
 
   const getStatus = (m: { id: string; status: string }) => memberStatuses[m.id] || m.status;
@@ -76,40 +82,46 @@ const MembersList = () => {
   });
 
   return (
-    <div className="w-60 bg-discord-gray flex-shrink-0 overflow-y-auto py-4">
-      {Object.entries(roleGroups).map(([roleName, roleMembers]) => (
-        <div key={roleName} className="mb-2">
-          <div className="px-4 py-1 text-discord-text-muted text-xs font-bold uppercase tracking-wide">
-            {roleName} — {roleMembers.length}
+    <>
+      <div className="w-60 bg-discord-gray flex-shrink-0 overflow-y-auto py-4">
+        {Object.entries(roleGroups).map(([roleName, roleMembers]) => (
+          <div key={roleName} className="mb-2">
+            <div className="px-4 py-1 text-discord-text-muted text-xs font-bold uppercase tracking-wide">
+              {roleName} — {roleMembers.length}
+            </div>
+            {roleMembers.map(m => (
+              <MemberItem key={m.id} member={m} status={getStatus(m)} onOpenProfile={setProfileUserId} />
+            ))}
           </div>
-          {roleMembers.map(m => (
-            <MemberItem key={m.id} member={m} status={getStatus(m)} />
-          ))}
-        </div>
-      ))}
+        ))}
 
-      {noRole.length > 0 && (
-        <div className="mb-2">
-          <div className="px-4 py-1 text-discord-text-muted text-xs font-bold uppercase tracking-wide">
-            Online — {noRole.length}
+        {noRole.length > 0 && (
+          <div className="mb-2">
+            <div className="px-4 py-1 text-discord-text-muted text-xs font-bold uppercase tracking-wide">
+              Online — {noRole.length}
+            </div>
+            {noRole.map(m => (
+              <MemberItem key={m.id} member={m} status={getStatus(m)} onOpenProfile={setProfileUserId} />
+            ))}
           </div>
-          {noRole.map(m => (
-            <MemberItem key={m.id} member={m} status={getStatus(m)} />
-          ))}
-        </div>
-      )}
+        )}
 
-      {offline.length > 0 && (
-        <div>
-          <div className="px-4 py-1 text-discord-text-muted text-xs font-bold uppercase tracking-wide">
-            Offline — {offline.length}
+        {offline.length > 0 && (
+          <div>
+            <div className="px-4 py-1 text-discord-text-muted text-xs font-bold uppercase tracking-wide">
+              Offline — {offline.length}
+            </div>
+            {offline.map(m => (
+              <MemberItem key={m.id} member={m} status="offline" onOpenProfile={setProfileUserId} />
+            ))}
           </div>
-          {offline.map(m => (
-            <MemberItem key={m.id} member={m} status="offline" />
-          ))}
-        </div>
+        )}
+      </div>
+
+      {profileUserId && (
+        <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />
       )}
-    </div>
+    </>
   );
 };
 

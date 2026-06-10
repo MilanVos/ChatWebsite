@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import useStore from '../store/useStore';
 import UserSettingsModal from './modals/UserSettingsModal';
+import UserProfileModal from './modals/UserProfileModal';
 import api from '../utils/api';
 
 const statusColor = (status?: string) => {
@@ -14,6 +15,7 @@ const DMSidebar = () => {
   const { dms, activeDM, setActiveDM, setActiveServer, user, markDMRead } = useStore();
   const [search, setSearch] = useState('');
   const [showUserSettings, setShowUserSettings] = useState(false);
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
 
   const filtered = dms.filter(dm =>
     !search || (dm.username || '').toLowerCase().includes(search.toLowerCase())
@@ -72,11 +74,14 @@ const DMSidebar = () => {
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-colors group
                   ${activeDM?.id === dm.id ? 'bg-discord-lighter text-white' : unread > 0 ? 'text-white hover:bg-discord-lighter/50' : 'text-discord-text-muted hover:bg-discord-lighter/50 hover:text-discord-text'}`}
               >
-                <div className="relative flex-shrink-0">
+                <div
+                  className="relative flex-shrink-0"
+                  onClick={e => { e.stopPropagation(); if (dm.friend_id) setProfileUserId(dm.friend_id); }}
+                >
                   {dm.avatar ? (
-                    <img src={dm.avatar} alt={dm.username} className="w-8 h-8 rounded-full" />
+                    <img src={dm.avatar} alt={dm.username} className="w-8 h-8 rounded-full hover:opacity-80 transition-opacity" />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-discord-accent flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-8 h-8 rounded-full bg-discord-accent flex items-center justify-center text-white text-xs font-bold hover:opacity-80 transition-opacity">
                       {(dm.username || '?')[0].toUpperCase()}
                     </div>
                   )}
@@ -133,6 +138,7 @@ const DMSidebar = () => {
       </div>
 
       {showUserSettings && <UserSettingsModal onClose={() => setShowUserSettings(false)} />}
+      {profileUserId && <UserProfileModal userId={profileUserId} onClose={() => setProfileUserId(null)} />}
     </div>
   );
 };
