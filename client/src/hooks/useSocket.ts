@@ -8,7 +8,7 @@ export const getSocket = (): Socket | null => socketInstance;
 
 export const useSocket = () => {
   const initialized = useRef(false);
-  const { user, addMessage, updateMessage, deleteMessage, updateMessageReactions, addDMMessage, deleteDMMessage, setTyping, updateMemberStatus, addFriend, updateFriend, removeServer, incrementDMUnread } = useStore();
+  const { user, addMessage, updateMessage, deleteMessage, updateMessageReactions, addDMMessage, deleteDMMessage, setTyping, updateMemberStatus, addFriend, updateFriend, removeServer, incrementDMUnread, setVoiceParticipants, addVoiceParticipant, removeVoiceParticipant } = useStore();
 
   useEffect(() => {
     if (!user || initialized.current) return;
@@ -38,6 +38,16 @@ export const useSocket = () => {
     socketInstance.on('friend:accepted', (data: any) => { toast(`${data.username} accepted your request!`, { icon: '🎉' }); updateFriend(data.id, { status: 'accepted' }); });
     socketInstance.on('server:kick', ({ server_id }: any) => { toast.error('You were kicked'); removeServer(server_id); });
     socketInstance.on('server:ban', ({ server_id }: any) => { toast.error('You were banned'); removeServer(server_id); });
+
+    socketInstance.on('voice:participants', ({ channel_id, participants }: any) => {
+      setVoiceParticipants(channel_id, participants);
+    });
+    socketInstance.on('voice:user-joined', ({ channel_id, user: u }: any) => {
+      addVoiceParticipant(channel_id, u);
+    });
+    socketInstance.on('voice:user-left', ({ channel_id, user_id }: any) => {
+      removeVoiceParticipant(channel_id, user_id);
+    });
 
     return () => { socketInstance?.disconnect(); socketInstance = null; initialized.current = false; };
   }, [user]);

@@ -8,6 +8,8 @@ let ioInstance: Server | null = null;
 
 export const getIO = (): Server | null => ioInstance;
 
+const voiceChannels = new Map<string, Map<string, { id: string; username: string; avatar?: string }>>();
+
 export const initSocket = (io: Server): void => {
   ioInstance = io;
 
@@ -87,7 +89,45 @@ export const initSocket = (io: Server): void => {
       socket.to(`server:${serverId}`).emit('user:status', { user_id: userId, status: 'offline' });
     });
 
+    const leaveAllVoice = () => {
+      for (const [chanId, participants] of voiceChannels) {
+        if (participants.has(userId)) {
+          participants.delete(chanId);
+          participants.delete(userId);
+          io.to(`voice:${chanId}`).emit('voice:user-left', { user_id: userId, channel_id: chanId });
+          void socket.leave(`voice:${chanId}`);
+          if (participants.size === 0) voiceChannels.delete(chanId);
+        }
+      }
+    };
+
+    socket.on('voice:join', (channelId: string) => {
+      leaveAllVoice();
+      if (!voiceChannels.has(channelId)) voiceChannels.set(channelId, new Map());
+      const participants = voiceChannels.get(channelId)!;
+      const existingIds = [...participants.keys()];
+      const userInfo = { id: userId, username: user.username as string, avatar: user.avatar as string | undefined };
+      participants.set(userId, userInfo);
+      void socket.join(`voice:${channelId}`);
+      socket.emit('voice:participants', { channel_id: channelId, participants: [...participants.values()].filter(p => p.id !== userId) });
+      socket.to(`voice:${channelId}`).emit('voice:user-joined', { channel_id: channelId, user: userInfo });
+      socket.emit('voice:existing-peers', { channel_id: channelId, peers: existingIds });
+    });
+
+    socket.on('voice:leave', () => leaveAllVoice());
+
+    socket.on('voice:offer', ({ to, offer }: { to: string; offer: unknown }) => {
+      io.to(`user:${to}`).emit('voice:offer', { from: userId, offer });
+    });
+    socket.on('voice:answer', ({ to, answer }: { to: string; answer: unknown }) => {
+      io.to(`user:${to}`).emit('voice:answer', { from: userId, answer });
+    });
+    socket.on('voice:ice-candidate', ({ to, candidate }: { to: string; candidate: unknown }) => {
+      io.to(`user:${to}`).emit('voice:ice-candidate', { from: userId, candidate });
+    });
+
     socket.on('disconnect', async () => {
+      leaveAllVoice();
       console.log(`🔴 Disconnected: ${user.username as string}`);
       await pool.query('UPDATE users SET status = $1 WHERE id = $2', ['offline', userId]);
       const userServers = await pool.query('SELECT server_id FROM server_members WHERE user_id = $1', [userId]);

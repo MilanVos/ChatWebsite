@@ -22,7 +22,8 @@ const CreateChannelModal: React.FC<Props> = ({ onClose }) => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post(`/servers/${activeServer.id}/channels`, {
+      const res = await api.post('/channels', {
+        server_id: activeServer.id,
         name: name.trim().toLowerCase().replace(/\s+/g, '-'),
         type,
         topic: topic.trim() || undefined,

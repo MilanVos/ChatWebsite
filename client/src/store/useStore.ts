@@ -34,6 +34,8 @@ interface Friend {
   friend_user_id?: string; username?: string; discriminator?: string; avatar?: string;
 }
 
+interface VoiceParticipant { id: string; username: string; avatar?: string; }
+
 interface Store {
   user: User | null;
   servers: Server[];
@@ -46,6 +48,8 @@ interface Store {
   dms: DMChannel[];
   typingUsers: Record<string, Record<string, string>>;
   memberStatuses: Record<string, string>;
+  voiceChannelId: string | null;
+  voiceParticipants: Record<string, VoiceParticipant[]>;
 
   setUser: (user: User | null) => void;
   setServers: (s: Server[]) => void;
@@ -76,12 +80,17 @@ interface Store {
   setTyping: (channelId: string, userId: string, username: string, isTyping: boolean) => void;
   updateMemberStatus: (userId: string, status: string) => void;
   setBadges: (badges: string[]) => void;
+  setVoiceChannel: (channelId: string | null) => void;
+  setVoiceParticipants: (channelId: string, participants: VoiceParticipant[]) => void;
+  addVoiceParticipant: (channelId: string, participant: VoiceParticipant) => void;
+  removeVoiceParticipant: (channelId: string, userId: string) => void;
   logout: () => void;
 }
 
 const useStore = create<Store>((set) => ({
   user: null, servers: [], activeServer: null, activeChannel: null, activeDM: null,
   messages: {}, dmMessages: {}, friends: [], dms: [], typingUsers: {}, memberStatuses: {},
+  voiceChannelId: null, voiceParticipants: {},
 
   setUser: (user) => set({ user }),
   setServers: (servers) => set({ servers }),
@@ -153,6 +162,22 @@ const useStore = create<Store>((set) => ({
     return { typingUsers: { ...s.typingUsers, [channelId]: rest } };
   }),
   setBadges: (badges) => set((s) => ({ user: s.user ? { ...s.user, badges } : s.user })),
+  setVoiceChannel: (channelId) => set({ voiceChannelId: channelId }),
+  setVoiceParticipants: (channelId, participants) => set((s) => ({
+    voiceParticipants: { ...s.voiceParticipants, [channelId]: participants },
+  })),
+  addVoiceParticipant: (channelId, participant) => set((s) => ({
+    voiceParticipants: {
+      ...s.voiceParticipants,
+      [channelId]: [...(s.voiceParticipants[channelId] || []).filter(p => p.id !== participant.id), participant],
+    },
+  })),
+  removeVoiceParticipant: (channelId, userId) => set((s) => ({
+    voiceParticipants: {
+      ...s.voiceParticipants,
+      [channelId]: (s.voiceParticipants[channelId] || []).filter(p => p.id !== userId),
+    },
+  })),
   updateMemberStatus: (userId, status) => set((s) => ({
     memberStatuses: { ...s.memberStatuses, [userId]: status },
     activeServer: s.activeServer

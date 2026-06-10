@@ -13,7 +13,7 @@ const statusDot = (status?: string) => {
 };
 
 const ChannelSidebar = () => {
-  const { activeServer, activeChannel, setActiveChannel, updateServer, user } = useStore();
+  const { activeServer, activeChannel, setActiveChannel, updateServer, user, voiceChannelId, voiceParticipants } = useStore();
   const [showServerSettings, setShowServerSettings] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [showUserSettings, setShowUserSettings] = useState(false);
@@ -45,13 +45,18 @@ const ChannelSidebar = () => {
 
       <div className="flex-1 overflow-y-auto py-2">
         {uncategorized.map(channel => (
-          <ChannelItem
-            key={channel.id}
-            channel={channel}
-            isActive={activeChannel?.id === channel.id}
-            isOwner={isOwner}
-            onClick={() => setActiveChannel(channel)}
-          />
+          <React.Fragment key={channel.id}>
+            <ChannelItem
+              channel={channel}
+              isActive={activeChannel?.id === channel.id}
+              isOwner={isOwner}
+              inVoice={voiceChannelId === channel.id}
+              onClick={() => setActiveChannel(channel)}
+            />
+            {channel.type === 'voice' && (voiceParticipants[channel.id] || []).map(p => (
+              <VoiceParticipantRow key={p.id} participant={p} />
+            ))}
+          </React.Fragment>
         ))}
 
         {categories.map(cat => (
@@ -79,13 +84,18 @@ const ChannelSidebar = () => {
               .filter(c => c.category_id === cat.id)
               .sort((a, b) => a.position - b.position)
               .map(channel => (
-                <ChannelItem
-                  key={channel.id}
-                  channel={channel}
-                  isActive={activeChannel?.id === channel.id}
-                  isOwner={isOwner}
-                  onClick={() => setActiveChannel(channel)}
-                />
+                <React.Fragment key={channel.id}>
+                  <ChannelItem
+                    channel={channel}
+                    isActive={activeChannel?.id === channel.id}
+                    isOwner={isOwner}
+                    inVoice={voiceChannelId === channel.id}
+                    onClick={() => setActiveChannel(channel)}
+                  />
+                  {channel.type === 'voice' && (voiceParticipants[channel.id] || []).map(p => (
+                    <VoiceParticipantRow key={p.id} participant={p} />
+                  ))}
+                </React.Fragment>
               ))}
           </div>
         ))}
@@ -139,10 +149,11 @@ interface ChannelItemProps {
   channel: { id: string; name: string; type: string; topic?: string };
   isActive: boolean;
   isOwner: boolean;
+  inVoice?: boolean;
   onClick: () => void;
 }
 
-const ChannelItem: React.FC<ChannelItemProps> = ({ channel, isActive, onClick }) => (
+const ChannelItem: React.FC<ChannelItemProps> = ({ channel, isActive, inVoice, onClick }) => (
   <button
     onClick={onClick}
     className={`w-full flex items-center gap-2 px-3 py-1.5 mx-2 rounded text-sm transition-colors group
@@ -153,14 +164,37 @@ const ChannelItem: React.FC<ChannelItemProps> = ({ channel, isActive, onClick })
     style={{ width: 'calc(100% - 16px)' }}
   >
     {channel.type === 'voice' ? (
-      <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M12 3a9 9 0 00-9 9 9 9 0 009 9 9 9 0 009-9 9 9 0 00-9-9zm-1 4h2v7h-2V7zm0 9h2v2h-2v-2z" />
+      <svg className={`w-4 h-4 flex-shrink-0 ${inVoice ? 'text-discord-green' : ''}`} fill="currentColor" viewBox="0 0 24 24">
+        <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
       </svg>
     ) : (
       <span className="font-bold text-base leading-none flex-shrink-0">#</span>
     )}
     <span className="truncate">{channel.name}</span>
+    {inVoice && (
+      <span className="ml-auto text-discord-green">
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
+        </svg>
+      </span>
+    )}
   </button>
+);
+
+const VoiceParticipantRow: React.FC<{ participant: { id: string; username: string; avatar?: string } }> = ({ participant }) => (
+  <div className="flex items-center gap-2 pl-8 pr-3 py-0.5 ml-2 text-xs text-discord-text-muted">
+    {participant.avatar ? (
+      <img src={participant.avatar} alt={participant.username} className="w-5 h-5 rounded-full flex-shrink-0" />
+    ) : (
+      <div className="w-5 h-5 rounded-full bg-discord-accent flex items-center justify-center text-white text-xs flex-shrink-0">
+        {participant.username[0].toUpperCase()}
+      </div>
+    )}
+    <span className="truncate">{participant.username}</span>
+    <svg className="w-3 h-3 ml-auto text-discord-green flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
+    </svg>
+  </div>
 );
 
 export default ChannelSidebar;

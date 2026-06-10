@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import EmojiPicker, { Theme, EmojiClickData } from 'emoji-picker-react';
 import api from '../utils/api';
 import { getSocket } from '../hooks/useSocket';
+import toast from 'react-hot-toast';
 
 interface ReplyTo {
   id: string;
@@ -95,8 +96,9 @@ const MessageInput: React.FC<Props> = ({ channelId, isDM, channelName, replyTo, 
         textareaRef.current.style.height = 'auto';
         textareaRef.current.focus();
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      toast.error(e?.response?.data?.error || 'Failed to send message');
     } finally {
       setSending(false);
     }

@@ -3,6 +3,7 @@ import { useSocket } from '../hooks/useSocket';
 import ServerSidebar from '../components/ServerSidebar';
 import ChannelSidebar from '../components/ChannelSidebar';
 import ChatArea from '../components/ChatArea';
+import VoiceArea from '../components/VoiceArea';
 import DMSidebar from '../components/DMSidebar';
 import MembersList from '../components/MembersList';
 import FriendsPage from '../components/FriendsPage';
@@ -27,7 +28,13 @@ const MainApp = () => {
         <>
           <ChannelSidebar />
           <div className="flex flex-1 overflow-hidden">
-            {activeChannel ? <><ChatArea /><MembersList /></> : (
+            {activeChannel ? (
+              activeChannel.type === 'voice' ? (
+                <><VoiceArea channelId={activeChannel.id} channelName={activeChannel.name} /><MembersList /></>
+              ) : (
+                <><ChatArea /><MembersList /></>
+              )
+            ) : (
               <div className="flex-1 flex items-center justify-center text-discord-text-muted">
                 <div className="text-center"><div className="text-6xl mb-4">👋</div><p>Select a channel</p></div>
               </div>
