@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSocket } from '../hooks/useSocket';
+import TopBar from '../components/TopBar';
 import Navigator from '../components/Navigator';
 import ChatArea from '../components/ChatArea';
 import VoiceArea from '../components/VoiceArea';
@@ -21,30 +22,33 @@ const MainApp = () => {
   }, [user]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Navigator />
+    <div className="flex flex-col h-screen overflow-hidden">
+      <TopBar />
       <div className="flex flex-1 overflow-hidden">
-        {activeServer ? (
-          activeChannel ? (
-            activeChannel.type === 'voice'
-              ? <VoiceArea channelId={activeChannel.id} channelName={activeChannel.name} />
-              : <ChatArea showMembers={showMembers} onToggleMembers={() => setShowMembers(v => !v)} />
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center select-none">
-                <div className="text-6xl mb-4" style={{ opacity: 0.1 }}>⚡</div>
-                <p className="font-medium text-sm" style={{ color: 'rgba(240,226,222,0.3)' }}>
-                  Select a channel to get started
-                </p>
+        <Navigator />
+        <div className="flex flex-1 overflow-hidden">
+          {activeServer ? (
+            activeChannel ? (
+              activeChannel.type === 'voice'
+                ? <VoiceArea channelId={activeChannel.id} channelName={activeChannel.name} />
+                : <ChatArea showMembers={showMembers} onToggleMembers={() => setShowMembers(v => !v)} />
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center select-none">
+                  <div className="text-6xl mb-4" style={{ opacity: 0.08 }}>⚡</div>
+                  <p className="font-semibold text-sm" style={{ color: 'rgba(240,226,222,0.25)' }}>
+                    Select a channel to get started
+                  </p>
+                </div>
               </div>
-            </div>
-          )
-        ) : (
-          activeDM
-            ? <ChatArea isDM showMembers={false} onToggleMembers={() => {}} />
-            : <FriendsPage />
-        )}
-        {activeServer && showMembers && <MembersList />}
+            )
+          ) : (
+            activeDM
+              ? <ChatArea isDM showMembers={false} onToggleMembers={() => {}} />
+              : <FriendsPage />
+          )}
+          {activeServer && showMembers && <MembersList />}
+        </div>
       </div>
     </div>
   );
