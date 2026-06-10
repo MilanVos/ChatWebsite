@@ -60,7 +60,14 @@ interface Store {
   setActiveChannel: (c: Channel | null) => void;
   setActiveDM: (dm: DMChannel | null) => void;
   addChannel: (c: Channel) => void;
+  updateChannel: (channel: Partial<Channel> & { id: string }) => void;
   removeChannel: (id: string) => void;
+  addCategory: (cat: Category) => void;
+  removeCategory: (id: string) => void;
+  addServerMember: (serverId: string, member: Member) => void;
+  removeServerMember: (serverId: string, userId: string) => void;
+  updateServerMember: (serverId: string, userId: string, data: Partial<Member>) => void;
+  updateServerRoles: (serverId: string, roles: Role[]) => void;
   setMessages: (channelId: string, msgs: Message[]) => void;
   addMessage: (channelId: string, msg: Message) => void;
   updateMessage: (channelId: string, msg: Message) => void;
@@ -111,12 +118,46 @@ const useStore = create<Store>((set) => ({
     if (!s.activeServer || s.activeServer.id !== channel.server_id) return s;
     return { activeServer: { ...s.activeServer, channels: [...(s.activeServer.channels || []), channel] } };
   }),
+  updateChannel: (channel) => set((s) => {
+    if (!s.activeServer) return s;
+    return {
+      activeServer: { ...s.activeServer, channels: s.activeServer.channels?.map((c) => c.id === channel.id ? { ...c, ...channel } : c) || [] },
+      activeChannel: s.activeChannel?.id === channel.id ? { ...s.activeChannel, ...channel } : s.activeChannel,
+    };
+  }),
   removeChannel: (id) => set((s) => {
     if (!s.activeServer) return s;
     return {
       activeServer: { ...s.activeServer, channels: s.activeServer.channels?.filter((c) => c.id !== id) || [] },
       activeChannel: s.activeChannel?.id === id ? null : s.activeChannel,
     };
+  }),
+  addCategory: (cat) => set((s) => {
+    if (!s.activeServer || s.activeServer.id !== cat.server_id) return s;
+    return { activeServer: { ...s.activeServer, categories: [...(s.activeServer.categories || []), cat] } };
+  }),
+  removeCategory: (id) => set((s) => {
+    if (!s.activeServer) return s;
+    return { activeServer: { ...s.activeServer, categories: s.activeServer.categories?.filter((c) => c.id !== id) || [] } };
+  }),
+  addServerMember: (serverId, member) => set((s) => {
+    if (!s.activeServer || s.activeServer.id !== serverId) return s;
+    const exists = s.activeServer.members?.some((m) => m.id === member.id);
+    if (exists) return s;
+    return { activeServer: { ...s.activeServer, members: [...(s.activeServer.members || []), member] } };
+  }),
+  removeServerMember: (serverId, userId) => set((s) => {
+    if (!s.activeServer || s.activeServer.id !== serverId) return s;
+    return { activeServer: { ...s.activeServer, members: s.activeServer.members?.filter((m) => m.id !== userId) || [] } };
+  }),
+  updateServerMember: (serverId, userId, data) => set((s) => {
+    if (!s.activeServer || s.activeServer.id !== serverId) return s;
+    return { activeServer: { ...s.activeServer, members: s.activeServer.members?.map((m) => m.id === userId ? { ...m, ...data } : m) || [] } };
+  }),
+  updateServerRoles: (serverId, roles) => set((s) => {
+    const servers = s.servers.map((sv) => sv.id === serverId ? { ...sv, roles } : sv);
+    const activeServer = s.activeServer?.id === serverId ? { ...s.activeServer, roles } : s.activeServer;
+    return { servers, activeServer };
   }),
   setMessages: (channelId, msgs) => set((s) => ({ messages: { ...s.messages, [channelId]: msgs } })),
   addMessage: (channelId, msg) => set((s) => ({ messages: { ...s.messages, [channelId]: [...(s.messages[channelId] || []), msg] } })),

@@ -129,6 +129,19 @@ router.post('/join/:inviteCode', auth, async (req: Request, res: Response): Prom
 
     await pool.query('INSERT INTO server_members (server_id, user_id, role_id) VALUES ($1, $2, $3)', [server.id, req.user!.id, roleId]);
     await pool.query('UPDATE servers SET member_count = member_count + 1 WHERE id = $1', [server.id]);
+
+    const newMember = (await pool.query(`
+      SELECT u.id, u.username, u.discriminator, u.avatar, u.status, u.custom_status,
+             sm.nickname, sm.role_id, sm.joined_at, r.name as role_name, r.color as role_color,
+             COALESCE(json_agg(ub.badge_type ORDER BY ub.awarded_at) FILTER (WHERE ub.badge_type IS NOT NULL), '[]') AS badges
+      FROM server_members sm
+      JOIN users u ON sm.user_id = u.id
+      LEFT JOIN roles r ON sm.role_id = r.id
+      LEFT JOIN user_badges ub ON ub.user_id = u.id
+      WHERE sm.server_id = $1 AND sm.user_id = $2
+      GROUP BY u.id, sm.nickname, sm.role_id, sm.joined_at, r.name, r.color
+    `, [server.id, req.user!.id])).rows[0];
+    getIO()?.to(`server:${server.id}`).emit('member:join', { server_id: server.id, member: newMember });
     res.json(server);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
@@ -152,7 +165,9 @@ router.patch('/:id', auth, upload.fields([{ name: 'icon', maxCount: 1 }, { name:
 
     const set = Object.keys(updates).map((k, i) => `${k} = $${i + 2}`).join(', ');
     const result = await pool.query(`UPDATE servers SET ${set} WHERE id = $1 RETURNING *`, [id, ...Object.values(updates)]);
-    res.json(result.rows[0]);
+    const updated = result.rows[0];
+    getIO()?.to(`server:${id}`).emit('server:update', updated);
+    res.json(updated);
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -165,6 +180,7 @@ router.delete('/:id/leave', auth, async (req: Request, res: Response): Promise<v
 
     await pool.query('DELETE FROM server_members WHERE server_id = $1 AND user_id = $2', [id, req.user!.id]);
     await pool.query('UPDATE servers SET member_count = GREATEST(member_count - 1, 0) WHERE id = $1', [id]);
+    getIO()?.to(`server:${id}`).emit('member:leave', { server_id: id, user_id: req.user!.id });
     res.json({ message: 'Left server' });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
@@ -190,6 +206,7 @@ router.delete('/:id/members/:userId', auth, async (req: Request, res: Response):
     await pool.query('DELETE FROM server_members WHERE server_id = $1 AND user_id = $2', [id, userId]);
     await pool.query('UPDATE servers SET member_count = GREATEST(member_count - 1, 0) WHERE id = $1', [id]);
     getIO()?.to(`user:${userId}`).emit('server:kick', { server_id: id });
+    getIO()?.to(`server:${id}`).emit('member:leave', { server_id: id, user_id: userId });
     res.json({ message: 'Member kicked' });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
@@ -233,6 +250,8 @@ router.post('/:id/roles', auth, async (req: Request, res: Response): Promise<voi
       'INSERT INTO roles (server_id, name, color, permissions, position) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [id, name || 'new role', color || '#99aab5', permissions || 0, pos]
     )).rows[0];
+    const allRoles = (await pool.query('SELECT * FROM roles WHERE server_id = $1 ORDER BY position DESC', [id])).rows;
+    getIO()?.to(`server:${id}`).emit('server:roles_update', { server_id: id, roles: allRoles });
     res.status(201).json(role);
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
@@ -254,6 +273,8 @@ router.patch('/:id/roles/:roleId', auth, async (req: Request, res: Response): Pr
     const set = Object.keys(updates).map((k, i) => `${k} = $${i + 2}`).join(', ');
     const role = (await pool.query(`UPDATE roles SET ${set} WHERE id = $1 AND server_id = $${Object.keys(updates).length + 2} RETURNING *`, [roleId, ...Object.values(updates), id])).rows[0];
     if (!role) { res.status(404).json({ error: 'Role not found' }); return; }
+    const allRoles = (await pool.query('SELECT * FROM roles WHERE server_id = $1 ORDER BY position DESC', [id])).rows;
+    getIO()?.to(`server:${id}`).emit('server:roles_update', { server_id: id, roles: allRoles });
     res.json(role);
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
@@ -269,6 +290,8 @@ router.delete('/:id/roles/:roleId', auth, async (req: Request, res: Response): P
     if (role.name === '@everyone') { res.status(400).json({ error: 'Cannot delete @everyone role' }); return; }
 
     await pool.query('DELETE FROM roles WHERE id = $1', [roleId]);
+    const allRoles = (await pool.query('SELECT * FROM roles WHERE server_id = $1 ORDER BY position DESC', [id])).rows;
+    getIO()?.to(`server:${id}`).emit('server:roles_update', { server_id: id, roles: allRoles });
     res.json({ message: 'Role deleted' });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
@@ -281,6 +304,14 @@ router.patch('/:id/members/:userId/role', auth, async (req: Request, res: Respon
     if (!server || (server.owner_id !== req.user!.id && !isStaff(req.user))) { res.status(403).json({ error: 'No permission' }); return; }
 
     await pool.query('UPDATE server_members SET role_id = $1 WHERE server_id = $2 AND user_id = $3', [role_id, id, userId]);
+    const roleInfo = role_id ? (await pool.query('SELECT name, color FROM roles WHERE id = $1', [role_id])).rows[0] : null;
+    getIO()?.to(`server:${id}`).emit('member:role_update', {
+      server_id: id,
+      user_id: userId,
+      role_id,
+      role_name: roleInfo?.name ?? null,
+      role_color: roleInfo?.color ?? null,
+    });
     res.json({ message: 'Role updated' });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });

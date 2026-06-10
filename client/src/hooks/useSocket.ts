@@ -8,7 +8,7 @@ export const getSocket = (): Socket | null => socketInstance;
 
 export const useSocket = () => {
   const initialized = useRef(false);
-  const { user, addMessage, updateMessage, deleteMessage, updateMessageReactions, addDMMessage, deleteDMMessage, setTyping, updateMemberStatus, addFriend, updateFriend, removeServer, incrementDMUnread, setVoiceParticipants, addVoiceParticipant, removeVoiceParticipant } = useStore();
+  const { user, addMessage, updateMessage, deleteMessage, updateMessageReactions, addDMMessage, deleteDMMessage, setTyping, updateMemberStatus, addFriend, updateFriend, removeServer, incrementDMUnread, setVoiceParticipants, addVoiceParticipant, removeVoiceParticipant, updateServer, addChannel, updateChannel, removeChannel, addCategory, removeCategory, addServerMember, removeServerMember, updateServerMember, updateServerRoles } = useStore();
 
   useEffect(() => {
     if (!user || initialized.current) return;
@@ -48,6 +48,19 @@ export const useSocket = () => {
     socketInstance.on('voice:user-left', ({ channel_id, user_id }: any) => {
       removeVoiceParticipant(channel_id, user_id);
     });
+
+    socketInstance.on('server:update', (data: any) => updateServer(data));
+    socketInstance.on('channel:create', (channel: any) => addChannel(channel));
+    socketInstance.on('channel:update', (channel: any) => updateChannel(channel));
+    socketInstance.on('channel:delete', ({ id }: any) => removeChannel(id));
+    socketInstance.on('category:create', (cat: any) => addCategory(cat));
+    socketInstance.on('category:delete', ({ id }: any) => removeCategory(id));
+    socketInstance.on('member:join', ({ server_id, member }: any) => addServerMember(server_id, member));
+    socketInstance.on('member:leave', ({ server_id, user_id }: any) => removeServerMember(server_id, user_id));
+    socketInstance.on('member:role_update', ({ server_id, user_id, role_id, role_name, role_color }: any) => {
+      updateServerMember(server_id, user_id, { role_id, role_name, role_color });
+    });
+    socketInstance.on('server:roles_update', ({ server_id, roles }: any) => updateServerRoles(server_id, roles));
 
     return () => { socketInstance?.disconnect(); socketInstance = null; initialized.current = false; };
   }, [user]);

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../config/db';
 import { auth } from '../middleware/auth';
+import { getIO } from '../socket/handlers';
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.post('/', auth, async (req: Request, res: Response): Promise<void> => {
       'INSERT INTO channels (server_id, category_id, name, type, topic, position) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
       [server_id, category_id || null, name.toLowerCase().replace(/\s+/g, '-'), type, topic || null, pos]
     )).rows[0];
+    getIO()?.to(`server:${server_id}`).emit('channel:create', channel);
     res.status(201).json(channel);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
@@ -40,7 +42,9 @@ router.patch('/:id', auth, async (req: Request, res: Response): Promise<void> =>
 
     const set = Object.keys(updates).map((k, i) => `${k} = $${i + 2}`).join(', ');
     const result = await pool.query(`UPDATE channels SET ${set} WHERE id = $1 RETURNING *`, [id, ...Object.values(updates)]);
-    res.json(result.rows[0]);
+    const updated = result.rows[0];
+    getIO()?.to(`server:${ch.server_id}`).emit('channel:update', updated);
+    res.json(updated);
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -52,6 +56,7 @@ router.delete('/:id', auth, async (req: Request, res: Response): Promise<void> =
     if (ch.owner_id !== req.user!.id) { res.status(403).json({ error: 'No permission' }); return; }
 
     await pool.query('DELETE FROM channels WHERE id = $1', [id]);
+    getIO()?.to(`server:${ch.server_id}`).emit('channel:delete', { id, server_id: ch.server_id });
     res.json({ message: 'Channel deleted' });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
@@ -68,6 +73,7 @@ router.post('/categories', auth, async (req: Request, res: Response): Promise<vo
       'INSERT INTO categories (server_id, name, position) VALUES ($1, $2, $3) RETURNING *',
       [server_id, name.toUpperCase(), pos]
     )).rows[0];
+    getIO()?.to(`server:${server_id}`).emit('category:create', cat);
     res.status(201).json(cat);
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
@@ -81,6 +87,7 @@ router.delete('/categories/:id', auth, async (req: Request, res: Response): Prom
 
     await pool.query('UPDATE channels SET category_id = NULL WHERE category_id = $1', [id]);
     await pool.query('DELETE FROM categories WHERE id = $1', [id]);
+    getIO()?.to(`server:${cat.server_id}`).emit('category:delete', { id, server_id: cat.server_id });
     res.json({ message: 'Category deleted' });
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
