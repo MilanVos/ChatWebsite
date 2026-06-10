@@ -7,9 +7,11 @@ import MessageInput from './MessageInput';
 
 interface Props {
   isDM?: boolean;
+  showMembers?: boolean;
+  onToggleMembers?: () => void;
 }
 
-const ChatArea: React.FC<Props> = ({ isDM = false }) => {
+const ChatArea: React.FC<Props> = ({ isDM = false, showMembers, onToggleMembers }) => {
   const { activeChannel, activeDM, messages, dmMessages, setMessages, setDMMessages, prependMessages, user, markDMRead } = useStore();
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -94,15 +96,35 @@ const ChatArea: React.FC<Props> = ({ isDM = false }) => {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden" style={{ background: 'rgba(8,4,3,0.55)', backdropFilter: 'blur(8px)' }}>
-      <div className="h-12 flex items-center px-4 shadow-sm flex-shrink-0 gap-3"
-        style={{ borderBottom: '1px solid rgba(255,107,53,0.1)', background: 'rgba(6,3,2,0.6)', backdropFilter: 'blur(16px)' }}>
-        <span className="font-bold text-lg" style={{ color: '#ff6b35' }}>{isDM ? '✉' : '#'}</span>
-        <span className="text-white font-semibold text-sm">{channelName}</span>
+      <div
+        className="h-12 flex items-center px-4 gap-3 flex-shrink-0"
+        style={{ borderBottom: '1px solid rgba(255,107,53,0.1)', background: 'rgba(6,3,2,0.72)', backdropFilter: 'blur(20px)' }}
+      >
+        <span className="font-bold text-base flex-shrink-0" style={{ color: '#ff6b35' }}>{isDM ? '@' : '#'}</span>
+        <span className="text-white font-semibold text-sm flex-shrink-0">{channelName}</span>
         {!isDM && activeChannel?.topic && (
           <>
-            <div className="w-px h-5 bg-discord-lighter" />
-            <span className="text-discord-text-muted text-sm truncate">{activeChannel.topic}</span>
+            <div className="w-px h-4 flex-shrink-0" style={{ background: 'rgba(255,107,53,0.2)' }} />
+            <span className="text-xs truncate min-w-0" style={{ color: 'rgba(240,226,222,0.4)' }}>{activeChannel.topic}</span>
           </>
+        )}
+        <div className="flex-1" />
+        {!isDM && onToggleMembers && (
+          <button
+            onClick={onToggleMembers}
+            className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-150 flex-shrink-0"
+            style={
+              showMembers
+                ? { background: 'rgba(255,107,53,0.18)', color: '#ff8c42', border: '1px solid rgba(255,107,53,0.3)' }
+                : { background: 'rgba(255,255,255,0.04)', color: 'rgba(240,226,222,0.4)', border: '1px solid rgba(255,255,255,0.06)' }
+            }
+            title="Toggle Members"
+          >
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+            </svg>
+            Members
+          </button>
         )}
       </div>
 
