@@ -77,12 +77,16 @@ const MessageInput: React.FC<Props> = ({ channelId, isDM, channelName, replyTo, 
     emitTyping(false);
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     try {
-      const endpoint = isDM ? `/dms/${channelId}/messages` : `/channels/${channelId}/messages`;
-      const formData = new FormData();
-      if (content.trim()) formData.append('content', content.trim());
-      if (replyTo) formData.append('reply_to', replyTo.id);
-      attachments.forEach(f => formData.append('files', f));
-      await api.post(endpoint, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      if (isDM) {
+        await api.post(`/dms/${channelId}/messages`, { content: content.trim() });
+      } else {
+        const formData = new FormData();
+        formData.append('channel_id', channelId);
+        if (content.trim()) formData.append('content', content.trim());
+        if (replyTo) formData.append('reply_to', replyTo.id);
+        attachments.forEach(f => formData.append('attachments', f));
+        await api.post('/messages', formData);
+      }
       setContent('');
       setAttachments([]);
       onReplyClear();

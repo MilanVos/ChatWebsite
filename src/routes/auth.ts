@@ -103,7 +103,12 @@ router.post(
       await pool.query('UPDATE users SET status = $1 WHERE id = $2', ['online', user.id]);
       const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET as string, { expiresIn: '7d' });
       const { password_hash, ...userData } = user;
-      res.json({ token, user: { ...userData, status: 'online' } });
+      const badgesResult = await pool.query(
+        'SELECT badge_type FROM user_badges WHERE user_id = $1 ORDER BY awarded_at',
+        [user.id]
+      );
+      const badges = badgesResult.rows.map((r: { badge_type: string }) => r.badge_type);
+      res.json({ token, user: { ...userData, status: 'online', badges } });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Server error' });

@@ -27,7 +27,7 @@ const ChatArea: React.FC<Props> = ({ isDM = false }) => {
     if (!channelId || loading) return;
     setLoading(true);
     try {
-      const endpoint = isDM ? `/dms/${channelId}/messages` : `/channels/${channelId}/messages`;
+      const endpoint = isDM ? `/dms/${channelId}/messages` : `/messages/channel/${channelId}`;
       const res = await api.get(endpoint, { params: before ? { before, limit: 50 } : { limit: 50 } });
       const msgs: any[] = res.data;
       if (before) {

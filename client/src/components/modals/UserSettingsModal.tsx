@@ -54,7 +54,7 @@ const UserSettingsModal: React.FC<Props> = ({ onClose }) => {
       formData.append('custom_status', customStatus.trim());
       formData.append('status', status);
       if (avatar) formData.append('avatar', avatar);
-      const res = await api.patch('/users/me', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await api.patch('/users/me', formData);
       setUser(res.data);
       toast.success('Profile updated!');
     } catch (e) {
