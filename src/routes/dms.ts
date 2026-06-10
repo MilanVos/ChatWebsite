@@ -97,6 +97,29 @@ router.post('/:channelId/read', auth, async (req: Request, res: Response): Promi
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
+router.patch('/:channelId/messages/:messageId', auth, async (req: Request, res: Response): Promise<void> => {
+  const { channelId, messageId } = req.params;
+  const { content } = req.body as { content?: string };
+  if (!content?.trim()) { res.status(400).json({ error: 'Content required' }); return; }
+  try {
+    const msg = (await pool.query('SELECT * FROM dm_messages WHERE id = $1 AND dm_channel_id = $2', [messageId, channelId])).rows[0];
+    if (!msg) { res.status(404).json({ error: 'Not found' }); return; }
+    if (msg.user_id !== req.user!.id) { res.status(403).json({ error: 'No permission' }); return; }
+
+    const updated = (await pool.query(
+      'UPDATE dm_messages SET content = $1, edited_at = NOW() WHERE id = $2 RETURNING *',
+      [content.trim(), messageId]
+    )).rows[0];
+
+    const members = (await pool.query('SELECT user_id FROM dm_members WHERE dm_channel_id = $1', [channelId])).rows;
+    members.forEach(m => {
+      getIO()?.to(`user:${m.user_id as string}`).emit('dm:update', { ...updated, dm_channel_id: channelId });
+    });
+
+    res.json(updated);
+  } catch { res.status(500).json({ error: 'Server error' }); }
+});
+
 router.delete('/:channelId/messages/:messageId', auth, async (req: Request, res: Response): Promise<void> => {
   const { channelId, messageId } = req.params;
   try {

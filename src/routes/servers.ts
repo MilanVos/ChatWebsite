@@ -237,6 +237,42 @@ router.post('/:id/roles', auth, async (req: Request, res: Response): Promise<voi
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
 
+router.patch('/:id/roles/:roleId', auth, async (req: Request, res: Response): Promise<void> => {
+  const { id, roleId } = req.params;
+  const { name, color, permissions } = req.body as { name?: string; color?: string; permissions?: number };
+  try {
+    const server = (await pool.query('SELECT owner_id FROM servers WHERE id = $1', [id])).rows[0];
+    if (!server || (server.owner_id !== req.user!.id && !isStaff(req.user))) { res.status(403).json({ error: 'No permission' }); return; }
+
+    const updates: Record<string, string | number> = {};
+    if (name) updates.name = name;
+    if (color) updates.color = color;
+    if (permissions !== undefined) updates.permissions = permissions;
+
+    if (!Object.keys(updates).length) { res.status(400).json({ error: 'Nothing to update' }); return; }
+
+    const set = Object.keys(updates).map((k, i) => `${k} = $${i + 2}`).join(', ');
+    const role = (await pool.query(`UPDATE roles SET ${set} WHERE id = $1 AND server_id = $${Object.keys(updates).length + 2} RETURNING *`, [roleId, ...Object.values(updates), id])).rows[0];
+    if (!role) { res.status(404).json({ error: 'Role not found' }); return; }
+    res.json(role);
+  } catch { res.status(500).json({ error: 'Server error' }); }
+});
+
+router.delete('/:id/roles/:roleId', auth, async (req: Request, res: Response): Promise<void> => {
+  const { id, roleId } = req.params;
+  try {
+    const server = (await pool.query('SELECT owner_id FROM servers WHERE id = $1', [id])).rows[0];
+    if (!server || (server.owner_id !== req.user!.id && !isStaff(req.user))) { res.status(403).json({ error: 'No permission' }); return; }
+
+    const role = (await pool.query('SELECT name FROM roles WHERE id = $1 AND server_id = $2', [roleId, id])).rows[0];
+    if (!role) { res.status(404).json({ error: 'Role not found' }); return; }
+    if (role.name === '@everyone') { res.status(400).json({ error: 'Cannot delete @everyone role' }); return; }
+
+    await pool.query('DELETE FROM roles WHERE id = $1', [roleId]);
+    res.json({ message: 'Role deleted' });
+  } catch { res.status(500).json({ error: 'Server error' }); }
+});
+
 router.patch('/:id/members/:userId/role', auth, async (req: Request, res: Response): Promise<void> => {
   const { id, userId } = req.params;
   const { role_id } = req.body as { role_id: string };

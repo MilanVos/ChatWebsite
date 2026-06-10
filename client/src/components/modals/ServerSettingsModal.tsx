@@ -7,7 +7,32 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'overview' | 'invite' | 'members' | 'danger';
+interface Role {
+  id: string;
+  name: string;
+  color: string;
+  permissions: number;
+  position: number;
+}
+
+type Tab = 'overview' | 'invite' | 'roles' | 'members' | 'danger';
+
+const PERMISSION_FLAGS: { label: string; bit: number }[] = [
+  { label: 'View Channels', bit: 1 << 10 },
+  { label: 'Send Messages', bit: 1 << 11 },
+  { label: 'Manage Messages', bit: 1 << 13 },
+  { label: 'Embed Links', bit: 1 << 14 },
+  { label: 'Attach Files', bit: 1 << 15 },
+  { label: 'Read Message History', bit: 1 << 16 },
+  { label: 'Mention Everyone', bit: 1 << 17 },
+  { label: 'Use Voice', bit: 1 << 22 },
+  { label: 'Kick Members', bit: 1 << 1 },
+  { label: 'Ban Members', bit: 1 << 2 },
+  { label: 'Manage Channels', bit: 1 << 4 },
+  { label: 'Manage Server', bit: 1 << 5 },
+  { label: 'Manage Roles', bit: 1 << 28 },
+  { label: 'Administrator', bit: 1 << 3 },
+];
 
 const ServerSettingsModal: React.FC<Props> = ({ onClose }) => {
   const { activeServer, updateServer, removeServer, setActiveServer, user } = useStore();
@@ -18,6 +43,18 @@ const ServerSettingsModal: React.FC<Props> = ({ onClose }) => {
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
+
+  const [roles, setRoles] = useState<Role[]>(activeServer?.roles || []);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [roleName, setRoleName] = useState('');
+  const [roleColor, setRoleColor] = useState('#99aab5');
+  const [rolePerms, setRolePerms] = useState(0);
+  const [savingRole, setSavingRole] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [creatingRole, setCreatingRole] = useState(false);
+
+  const [assignMemberId, setAssignMemberId] = useState('');
+  const [assigningRole, setAssigningRole] = useState(false);
 
   if (!activeServer) return null;
 
@@ -36,7 +73,7 @@ const ServerSettingsModal: React.FC<Props> = ({ onClose }) => {
       const formData = new FormData();
       formData.append('name', serverName.trim());
       if (icon) formData.append('icon', icon);
-      const res = await api.patch(`/servers/${activeServer.id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await api.patch(`/servers/${activeServer.id}`, formData);
       updateServer(res.data);
       toast.success('Server updated!');
     } catch (e) {
@@ -56,7 +93,7 @@ const ServerSettingsModal: React.FC<Props> = ({ onClose }) => {
   const handleKick = async (memberId: string) => {
     if (!window.confirm('Kick this member?')) return;
     try {
-      await api.post(`/servers/${activeServer.id}/members/${memberId}/kick`);
+      await api.delete(`/servers/${activeServer.id}/members/${memberId}`);
       updateServer({ id: activeServer.id, members: activeServer.members?.filter(m => m.id !== memberId) });
       toast.success('Member kicked');
     } catch (e) {
@@ -67,7 +104,7 @@ const ServerSettingsModal: React.FC<Props> = ({ onClose }) => {
   const handleBan = async (memberId: string) => {
     if (!window.confirm('Ban this member?')) return;
     try {
-      await api.post(`/servers/${activeServer.id}/members/${memberId}/ban`);
+      await api.post(`/servers/${activeServer.id}/ban/${memberId}`);
       updateServer({ id: activeServer.id, members: activeServer.members?.filter(m => m.id !== memberId) });
       toast.success('Member banned');
     } catch (e) {
@@ -88,9 +125,85 @@ const ServerSettingsModal: React.FC<Props> = ({ onClose }) => {
     }
   };
 
+  const handleSelectRole = (role: Role) => {
+    setSelectedRole(role);
+    setRoleName(role.name);
+    setRoleColor(role.color);
+    setRolePerms(role.permissions);
+  };
+
+  const handleSaveRole = async () => {
+    if (!selectedRole) return;
+    setSavingRole(true);
+    try {
+      const res = await api.patch(`/servers/${activeServer.id}/roles/${selectedRole.id}`, {
+        name: roleName, color: roleColor, permissions: rolePerms,
+      });
+      setRoles(prev => prev.map(r => r.id === selectedRole.id ? res.data : r));
+      setSelectedRole(res.data);
+      toast.success('Role updated!');
+    } catch (e) {
+      toast.error('Failed to update role');
+    } finally {
+      setSavingRole(false);
+    }
+  };
+
+  const handleCreateRole = async () => {
+    if (!newRoleName.trim()) return;
+    setCreatingRole(true);
+    try {
+      const res = await api.post(`/servers/${activeServer.id}/roles`, { name: newRoleName.trim() });
+      setRoles(prev => [...prev, res.data]);
+      setNewRoleName('');
+      toast.success('Role created!');
+    } catch (e) {
+      toast.error('Failed to create role');
+    } finally {
+      setCreatingRole(false);
+    }
+  };
+
+  const handleDeleteRole = async (roleId: string) => {
+    if (!window.confirm('Delete this role?')) return;
+    try {
+      await api.delete(`/servers/${activeServer.id}/roles/${roleId}`);
+      setRoles(prev => prev.filter(r => r.id !== roleId));
+      if (selectedRole?.id === roleId) setSelectedRole(null);
+      toast.success('Role deleted');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || 'Failed to delete role');
+    }
+  };
+
+  const handleAssignRole = async (roleIdToAssign: string) => {
+    if (!assignMemberId || !roleIdToAssign) return;
+    setAssigningRole(true);
+    try {
+      await api.patch(`/servers/${activeServer.id}/members/${assignMemberId}/role`, { role_id: roleIdToAssign });
+      const rName = roles.find(r => r.id === roleIdToAssign)?.name || '';
+      updateServer({
+        id: activeServer.id,
+        members: activeServer.members?.map(m =>
+          m.id === assignMemberId ? { ...m, role_id: roleIdToAssign, role_name: rName } : m
+        ),
+      });
+      toast.success('Role assigned!');
+    } catch (e) {
+      toast.error('Failed to assign role');
+    } finally {
+      setAssigningRole(false);
+    }
+  };
+
+  const togglePerm = (bit: number) => {
+    setRolePerms(prev => (prev & bit) ? prev & ~bit : prev | bit);
+  };
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
     { key: 'invite', label: 'Invite' },
+    { key: 'roles', label: 'Roles' },
     { key: 'members', label: 'Members' },
     ...(isOwner ? [{ key: 'danger' as Tab, label: 'Danger Zone' }] : []),
   ];
@@ -185,6 +298,143 @@ const ServerSettingsModal: React.FC<Props> = ({ onClose }) => {
               </div>
               <div className="mt-4 text-discord-text-muted text-xs">
                 Invite code: <span className="text-discord-text font-mono">{activeServer.invite_code}</span>
+              </div>
+            </div>
+          )}
+
+          {tab === 'roles' && (
+            <div className="flex gap-6 h-full">
+              <div className="w-48 flex-shrink-0">
+                <h2 className="text-white text-lg font-bold mb-4">Roles</h2>
+                <div className="flex flex-col gap-1 mb-4">
+                  {roles.map(role => (
+                    <div
+                      key={role.id}
+                      onClick={() => handleSelectRole(role)}
+                      className={`flex items-center justify-between gap-2 px-3 py-2 rounded cursor-pointer transition-colors group
+                        ${selectedRole?.id === role.id ? 'bg-discord-lighter' : 'hover:bg-discord-lighter/50'}`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: role.color }} />
+                        <span className="text-discord-text text-sm truncate">{role.name}</span>
+                      </div>
+                      {isOwner && role.name !== '@everyone' && (
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDeleteRole(role.id); }}
+                          className="opacity-0 group-hover:opacity-100 text-discord-text-muted hover:text-discord-red text-xs transition-opacity"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {isOwner && (
+                  <div className="flex gap-1">
+                    <input
+                      value={newRoleName}
+                      onChange={e => setNewRoleName(e.target.value)}
+                      placeholder="New role name"
+                      className="flex-1 bg-discord-dark text-discord-text text-xs rounded px-2 py-1.5 focus:outline-none min-w-0"
+                      onKeyDown={e => e.key === 'Enter' && handleCreateRole()}
+                    />
+                    <button
+                      onClick={handleCreateRole}
+                      disabled={creatingRole || !newRoleName.trim()}
+                      className="bg-discord-accent hover:bg-discord-accent-hover text-white text-xs px-2 py-1.5 rounded transition-colors disabled:opacity-50"
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto">
+                {selectedRole ? (
+                  <div>
+                    <h3 className="text-white font-bold mb-4">Edit Role — {selectedRole.name}</h3>
+
+                    <div className="mb-4">
+                      <label className="block text-discord-text-muted text-xs font-bold uppercase tracking-wide mb-1.5">Role Name</label>
+                      <input
+                        value={roleName}
+                        onChange={e => setRoleName(e.target.value)}
+                        disabled={selectedRole.name === '@everyone' || !isOwner}
+                        className="w-full bg-discord-dark text-discord-text rounded px-3 py-2 text-sm focus:outline-none disabled:opacity-50"
+                      />
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="block text-discord-text-muted text-xs font-bold uppercase tracking-wide mb-1.5">Role Color</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="color"
+                          value={roleColor}
+                          onChange={e => setRoleColor(e.target.value)}
+                          disabled={!isOwner}
+                          className="w-10 h-10 rounded cursor-pointer border-0 bg-transparent disabled:opacity-50"
+                        />
+                        <span className="text-discord-text text-sm font-mono">{roleColor}</span>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <label className="block text-discord-text-muted text-xs font-bold uppercase tracking-wide mb-2">Permissions</label>
+                      <div className="grid grid-cols-1 gap-2">
+                        {PERMISSION_FLAGS.map(perm => (
+                          <label key={perm.bit} className="flex items-center gap-3 cursor-pointer group">
+                            <div
+                              className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${(rolePerms & perm.bit) ? 'bg-discord-green' : 'bg-discord-lighter'}`}
+                              onClick={() => isOwner && togglePerm(perm.bit)}
+                            >
+                              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${(rolePerms & perm.bit) ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                            </div>
+                            <span className="text-discord-text text-sm">{perm.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {isOwner && selectedRole.name !== '@everyone' && (
+                      <button
+                        onClick={handleSaveRole}
+                        disabled={savingRole}
+                        className="bg-discord-accent hover:bg-discord-accent-hover text-white px-4 py-2 rounded font-medium text-sm transition-colors disabled:opacity-50"
+                      >
+                        {savingRole ? 'Saving...' : 'Save Role'}
+                      </button>
+                    )}
+
+                    {isOwner && (
+                      <div className="mt-6 pt-4 border-t border-discord-lighter">
+                        <h4 className="text-discord-text-muted text-xs font-bold uppercase tracking-wide mb-3">Assign Role to Member</h4>
+                        <div className="flex gap-2">
+                          <select
+                            value={assignMemberId}
+                            onChange={e => setAssignMemberId(e.target.value)}
+                            className="flex-1 bg-discord-dark text-discord-text rounded px-3 py-2 text-sm focus:outline-none"
+                          >
+                            <option value="">Select member...</option>
+                            {(activeServer.members || []).map(m => (
+                              <option key={m.id} value={m.id}>{m.nickname || m.username}</option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => handleAssignRole(selectedRole.id)}
+                            disabled={!assignMemberId || assigningRole}
+                            className="bg-discord-accent hover:bg-discord-accent-hover text-white px-3 py-2 rounded text-sm font-medium transition-colors disabled:opacity-50"
+                          >
+                            {assigningRole ? '...' : 'Assign'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-32 text-discord-text-muted text-sm">
+                    Select a role to edit it
+                  </div>
+                )}
               </div>
             </div>
           )}

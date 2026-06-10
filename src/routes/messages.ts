@@ -177,7 +177,7 @@ router.post('/:id/reactions', auth, async (req: Request, res: Response): Promise
     )).rows;
 
     const channelId = (await pool.query('SELECT channel_id FROM messages WHERE id = $1', [id])).rows[0]?.channel_id as string;
-    getIO()?.to(`channel:${channelId}`).emit('message:reaction', { message_id: id, reactions });
+    getIO()?.to(`channel:${channelId}`).emit('message:reaction', { message_id: id, channel_id: channelId, reactions });
     res.json(reactions);
   } catch { res.status(500).json({ error: 'Server error' }); }
 });
